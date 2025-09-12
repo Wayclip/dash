@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/authContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = 'https://wayclip.com';
 
 export default function LoginPage() {
     const { isAuthenticated, isLoading } = useAuth();
