@@ -2,7 +2,7 @@ FROM oven/bun:1-slim AS builder
 WORKDIR /app
 
 COPY package.json bun.lockb ./
-COPY tsconfig.json next.config.mjs ./
+COPY next.config.ts components.json eslint.config.mjs postcss.config.mjs tsconfig.json ./
 
 RUN bun install --immutable
 
