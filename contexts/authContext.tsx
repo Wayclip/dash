@@ -4,14 +4,12 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import axios from 'axios';
 
 interface UserProfile {
-    user: {
-        id: string;
-        github_id: number;
-        username: string;
-        avatar_url: string | null;
-        tier: 'free' | 'tier1' | 'tier2' | 'tier3';
-        is_banned: boolean;
-    };
+    id: string;
+    github_id: number;
+    username: string;
+    avatar_url: string | null;
+    tier: 'free' | 'tier1' | 'tier2' | 'tier3';
+    is_banned: boolean;
     storage_used: number;
     storage_limit: number;
     clip_count: number;

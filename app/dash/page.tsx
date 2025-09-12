@@ -125,7 +125,7 @@ const DashboardPage = () => {
     }
 
     if (isAuthenticated && userData) {
-        const userTierPlan = pricingPlans.find((p) => p.tierId === userData?.user?.tier) ?? pricingPlans[0];
+        const userTierPlan = pricingPlans.find((p) => p.tierId === userData?.tier) ?? pricingPlans[0];
 
         const storageLimitBytes = userData.storage_limit;
         const storageUsedBytes = userData.storage_used;
@@ -176,19 +176,17 @@ const DashboardPage = () => {
                                 </CardHeader>
                                 <CardContent className='flex items-center gap-4'>
                                     <a
-                                        href={`https://github.com/${userData.user.username}`}
+                                        href={`https://github.com/${userData.username}`}
                                         target='_blank'
                                         rel='noopener noreferrer'
                                     >
                                         <Avatar className='h-12 w-12'>
-                                            <AvatarImage src={userData.user.avatar_url ?? ''} alt='GitHub Avatar' />
-                                            <AvatarFallback>
-                                                {userData.user.username.charAt(0).toUpperCase()}
-                                            </AvatarFallback>
+                                            <AvatarImage src={userData.avatar_url ?? ''} alt='GitHub Avatar' />
+                                            <AvatarFallback>{userData.username.charAt(0).toUpperCase()}</AvatarFallback>
                                         </Avatar>
                                     </a>
                                     <div>
-                                        <p className='font-semibold text-lg'>{userData.user.username}</p>
+                                        <p className='font-semibold text-lg'>{userData.username}</p>
                                         <p className='text-sm text-muted-foreground'>GitHub Account</p>
                                     </div>
                                 </CardContent>
@@ -220,7 +218,7 @@ const DashboardPage = () => {
                                     className={cn(
                                         'flex flex-col',
                                         plan.isPopular && 'border-primary',
-                                        plan.tierId === userData.user.tier && 'ring-2 ring-primary',
+                                        plan.tierId === userData.tier && 'ring-2 ring-primary',
                                     )}
                                 >
                                     <CardHeader>
@@ -248,13 +246,11 @@ const DashboardPage = () => {
                                         <Button
                                             className='w-full'
                                             disabled={
-                                                plan.tierId === userData.user.tier ||
-                                                isUpgrading ||
-                                                plan.tierId === 'free'
+                                                plan.tierId === userData.tier || isUpgrading || plan.tierId === 'free'
                                             }
                                             onClick={() => handleUpgrade(plan.apiId)}
                                         >
-                                            {plan.tierId === userData.user.tier
+                                            {plan.tierId === userData.tier
                                                 ? 'Current Plan'
                                                 : isUpgrading
                                                   ? 'Processing...'
