@@ -125,7 +125,7 @@ const DashboardPage = () => {
     }
 
     if (isAuthenticated && userData) {
-        const userTierPlan = pricingPlans.find((plan) => plan.tierId === userData.user.tier) ?? pricingPlans[0];
+        const userTierPlan = pricingPlans.find((p) => p.tierId === userData?.user?.tier) ?? pricingPlans[0];
 
         const storageLimitBytes = userData.storage_limit;
         const storageUsedBytes = userData.storage_used;
