@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, LogOut, Unplug } from 'lucide-react';
 import { useAuth } from '@/contexts/authContext';
@@ -10,10 +10,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import axios from 'axios';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const pricingPlans = [
     {
         tierId: 'free',
+        apiId: null,
         name: 'Free',
         price: '$0',
         priceFrequency: '',
@@ -23,6 +27,7 @@ const pricingPlans = [
     },
     {
         tierId: 'tier1',
+        apiId: 'basic',
         name: 'Basic',
         price: '$3.99',
         priceFrequency: '/ month',
@@ -32,6 +37,7 @@ const pricingPlans = [
     },
     {
         tierId: 'tier2',
+        apiId: 'plus',
         name: 'Plus',
         price: '$6.99',
         priceFrequency: '/ month',
@@ -41,6 +47,7 @@ const pricingPlans = [
     },
     {
         tierId: 'tier3',
+        apiId: 'pro',
         name: 'Pro',
         price: '$14.99',
         priceFrequency: '/ month',
@@ -50,7 +57,7 @@ const pricingPlans = [
     },
 ];
 
-function StatCard({ title, value, description }: { title: string; value: string; description?: string }) {
+const StatCard = ({ title, value, description }: { title: string; value: string; description?: string }) => {
     return (
         <Card>
             <CardHeader>
@@ -62,14 +69,17 @@ function StatCard({ title, value, description }: { title: string; value: string;
             </CardContent>
         </Card>
     );
-}
+};
 
-export default function DashboardPage() {
+const DashboardPage = () => {
     const { isAuthenticated, isLoading, user: userData, logout } = useAuth();
     const router = useRouter();
+    const [isUpgrading, setIsUpgrading] = useState(false);
 
     useEffect(() => {
+        console.log('dash, isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
         if (!isLoading && !isAuthenticated) {
+            console.log('redirecting to /login');
             router.replace('/login');
         }
     }, [isLoading, isAuthenticated, router]);
@@ -81,6 +91,28 @@ export default function DashboardPage() {
             )
         ) {
             alert('Account deletion functionality is not yet implemented on the backend.');
+        }
+    };
+
+    const handleUpgrade = async (apiId: string | null) => {
+        if (!apiId) return;
+
+        setIsUpgrading(true);
+        try {
+            console.log('Upgrading tier');
+            const response = await axios.post(`${API_URL}/api/checkout/${apiId}`, {}, { withCredentials: true });
+
+            const { url } = response.data;
+            if (url) {
+                window.location.href = url;
+            } else {
+                throw new Error('No checkout URL received from server.');
+            }
+        } catch (error) {
+            console.error('Failed to create checkout session:', error);
+            alert('An error occurred while setting up the payment process. Please try again.');
+        } finally {
+            setIsUpgrading(false);
         }
     };
 
@@ -97,10 +129,8 @@ export default function DashboardPage() {
 
         const storageLimitBytes = userData.storage_limit;
         const storageUsedBytes = userData.storage_used;
-
         const storageUsedGB = storageUsedBytes / (1024 * 1024 * 1024);
-        const storageLimitGB = storageLimitBytes / (1024 * 1024 * 1024);
-
+        const storageLimitGB = storageLimitBytes > 0 ? storageLimitBytes / (1024 * 1024 * 1024) : 0;
         const storageUsedPercentage = storageLimitBytes > 0 ? (storageUsedBytes / storageLimitBytes) * 100 : 0;
 
         return (
@@ -109,8 +139,6 @@ export default function DashboardPage() {
                     <header className='sm:py-4'>
                         <h1 className='text-2xl font-semibold'>Dashboard</h1>
                     </header>
-
-                    {/* --- Account Data Section --- */}
                     <div className='flex flex-col gap-4'>
                         <header>
                             <h2 className='text-xl font-semibold'>Account Data</h2>
@@ -177,7 +205,6 @@ export default function DashboardPage() {
                             </Card>
                         </div>
                     </div>
-
                     <div className='flex flex-col gap-4'>
                         <header>
                             <h2 className='text-xl font-semibold'>Manage Subscription</h2>
@@ -220,10 +247,18 @@ export default function DashboardPage() {
                                     <CardFooter>
                                         <Button
                                             className='w-full'
-                                            disabled={plan.tierId === userData.user.tier}
-                                            onClick={() => alert('Subscription management is not yet implemented.')}
+                                            disabled={
+                                                plan.tierId === userData.user.tier ||
+                                                isUpgrading ||
+                                                plan.tierId === 'free'
+                                            }
+                                            onClick={() => handleUpgrade(plan.apiId)}
                                         >
-                                            {plan.tierId === userData.user.tier ? 'Current Plan' : 'Upgrade'}
+                                            {plan.tierId === userData.user.tier
+                                                ? 'Current Plan'
+                                                : isUpgrading
+                                                  ? 'Processing...'
+                                                  : 'Upgrade'}
                                         </Button>
                                     </CardFooter>
                                 </Card>
@@ -236,4 +271,6 @@ export default function DashboardPage() {
     }
 
     return null;
-}
+};
+
+export default DashboardPage;

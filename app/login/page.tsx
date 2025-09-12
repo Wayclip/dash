@@ -14,12 +14,15 @@ export default function LoginPage() {
     const router = useRouter();
 
     useEffect(() => {
+        console.log('isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
         if (!isLoading && isAuthenticated) {
+            console.log('Redirecting to /dash');
             router.replace('/dash');
         }
     }, [isLoading, isAuthenticated, router]);
 
     const handleLogin = () => {
+        console.log('Logging in');
         if (!API_URL) {
             alert('Configuration error: The API URL is not set. Please contact the administrator.');
             return;

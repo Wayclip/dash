@@ -28,7 +28,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return;
             }
             try {
+                console.log('Fetching /me');
                 const response = await axios.get(`${API_URL}/api/me`, {
                     withCredentials: true,
                 });
@@ -61,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const logout = () => {
+        console.log('Triggered logout');
         setUser(null);
         window.location.href = '/login';
     };
@@ -73,12 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+};
 
-export function useAuth() {
+export const useAuth = () => {
     const context = useContext(AuthContext);
     if (context === undefined) {
         throw new Error('useAuth must be used within an AuthProvider');
     }
     return context;
-}
+};
