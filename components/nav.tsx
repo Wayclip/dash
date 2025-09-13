@@ -42,7 +42,7 @@ export const Navbar = () => {
 
                     <Button size='icon' variant='ghost' asChild>
                         <a
-                            href='https://github.com/konyogony/wayclip'
+                            href='https://github.com/wayclip'
                             target='_blank'
                             rel='noopener noreferrer'
                             aria-label='GitHub'

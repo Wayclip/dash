@@ -44,12 +44,18 @@ export default function RootLayout({
                                         <h4 className='font-semibold mb-4'>Product</h4>
                                         <ul className='space-y-2 text-sm text-muted-foreground'>
                                             <li>
-                                                <a href='#Features' className='hover:text-foreground transition-colors'>
+                                                <a
+                                                    href='https://wayclip.com#Features'
+                                                    className='hover:text-foreground transition-colors'
+                                                >
                                                     Features
                                                 </a>
                                             </li>
                                             <li>
-                                                <a href='#Pricing' className='hover:text-foreground transition-colors'>
+                                                <a
+                                                    href='https://wayclip.com#Pricing'
+                                                    className='hover:text-foreground transition-colors'
+                                                >
                                                     Pricing
                                                 </a>
                                             </li>
@@ -70,7 +76,7 @@ export default function RootLayout({
                                             </li>
                                             <li>
                                                 <Link
-                                                    href={'/docs/contributing'}
+                                                    href='https://wayclip.com/docs/contributing'
                                                     className='hover:text-foreground transition-colors'
                                                 >
                                                     Contributing
@@ -98,7 +104,7 @@ export default function RootLayout({
                                             </li>
                                             <li>
                                                 <Link
-                                                    href={'/docs'}
+                                                    href='https://wayclip.com/docs'
                                                     className='hover:text-foreground transition-colors'
                                                 >
                                                     Documentation

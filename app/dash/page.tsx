@@ -1,12 +1,17 @@
 'use client';
 
+import { Copy } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
+import { Clip } from '@/contexts/authContext';
 import { useRouter } from 'next/navigation';
 import { Check, LogOut, Unplug } from 'lucide-react';
 import { useAuth } from '@/contexts/authContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
@@ -71,9 +76,61 @@ const StatCard = ({ title, value, description }: { title: string; value: string;
     );
 };
 
+const formatBytes = (bytes: number, decimals = 2) => {
+    if (!+bytes) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+};
+
+const ClipCard = ({
+    clip,
+    onDelete,
+    onCopy,
+}: {
+    clip: Clip;
+    onDelete: (id: string) => void;
+    onCopy: (url: string) => void;
+}) => {
+    const clipUrl = `${window.location.origin}/clip/${clip.id}`;
+
+    return (
+        <Card>
+            <CardHeader>
+                <a
+                    href={clipUrl}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='hover:underline flex items-center gap-2'
+                >
+                    <CardTitle className='text-base font-medium truncate'>{clip.file_name}</CardTitle>
+                    <ExternalLink className='size-4 text-muted-foreground' />
+                </a>
+                <CardDescription>
+                    {formatBytes(clip.file_size)} &middot; {new Date(clip.created_at).toLocaleDateString()}
+                </CardDescription>
+            </CardHeader>
+            <CardFooter className='flex justify-end gap-2'>
+                <Button variant='outline' size='sm' onClick={() => onCopy(clipUrl)}>
+                    <Copy className='mr-2 size-4' />
+                    Copy URL
+                </Button>
+                <Button variant='destructive' size='sm' onClick={() => onDelete(clip.id)}>
+                    <Trash2 className='mr-2 size-4' />
+                    Delete
+                </Button>
+            </CardFooter>
+        </Card>
+    );
+};
+
 const DashboardPage = () => {
     const { isAuthenticated, isLoading, user: userData, logout } = useAuth();
     const router = useRouter();
+    const [clips, setClips] = useState<Clip[]>([]);
+    const [clipsLoading, setClipsLoading] = useState(true);
     const [isUpgrading, setIsUpgrading] = useState(false);
 
     useEffect(() => {
@@ -83,6 +140,36 @@ const DashboardPage = () => {
             router.replace('/login');
         }
     }, [isLoading, isAuthenticated, router]);
+
+    useEffect(() => {
+        const fetchClips = async () => {
+            if (isAuthenticated) {
+                try {
+                    setClipsLoading(true);
+                    const response = await axios.get<Clip[]>(`${API_URL}/api/clips/index`, { withCredentials: true });
+                    setClips(response.data);
+                } catch (error) {
+                    console.error('Failed to fetch clips:', error);
+                } finally {
+                    setClipsLoading(false);
+                }
+            }
+        };
+
+        fetchClips();
+    }, [isAuthenticated]);
+
+    const handleDeleteClip = async (clipId: string) => {
+        if (window.confirm('Are you sure you want to delete this clip? This action is permanent.')) {
+            try {
+                await axios.delete(`${API_URL}/api/clip/${clipId}`, { withCredentials: true });
+                setClips((prevClips) => prevClips.filter((clip) => clip.id !== clipId));
+            } catch (error) {
+                console.error('Failed to delete clip:', error);
+                toast.error('An error occurred while deleting the clip. Please try again.');
+            }
+        }
+    };
 
     const handleRemoveConnection = async () => {
         if (
@@ -110,10 +197,15 @@ const DashboardPage = () => {
             }
         } catch (error) {
             console.error('Failed to create checkout session:', error);
-            alert('An error occurred while setting up the payment process. Please try again.');
+            toast.error('An error occurred while setting up the payment process. Please try again.');
         } finally {
             setIsUpgrading(false);
         }
+    };
+
+    const handleCopyUrl = (url: string) => {
+        navigator.clipboard.writeText(url);
+        toast.success('URL copied to clipboard!');
     };
 
     if (isLoading) {
@@ -146,6 +238,24 @@ const DashboardPage = () => {
                         <div className='grid gap-6 md:grid-cols-2'>
                             <div className='flex flex-col gap-6'>
                                 <StatCard title='Hosted Clips' value={userData.clip_count.toString()} />
+                                <div className='grid gap-4 md:grid-cols-2'>
+                                    {clipsLoading ? (
+                                        <p>Loading clips...</p>
+                                    ) : clips.length > 0 ? (
+                                        clips.map((clip) => (
+                                            <ClipCard
+                                                key={clip.id}
+                                                clip={clip}
+                                                onDelete={handleDeleteClip}
+                                                onCopy={handleCopyUrl}
+                                            />
+                                        ))
+                                    ) : (
+                                        <p className='text-muted-foreground md:col-span-2'>
+                                            You haven't uploaded any clips yet.
+                                        </p>
+                                    )}
+                                </div>
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className='text-base font-medium text-muted-foreground'>

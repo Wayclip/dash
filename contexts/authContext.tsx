@@ -22,6 +22,13 @@ interface AuthContextType {
     logout: () => void;
 }
 
+export interface Clip {
+    id: string;
+    file_name: string;
+    file_size: number;
+    created_at: string;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_URL = 'https://wayclip.com';
