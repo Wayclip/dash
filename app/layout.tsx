@@ -59,6 +59,22 @@ export default function RootLayout({
                                                     Pricing
                                                 </a>
                                             </li>
+                                            <li>
+                                                <a
+                                                    href='https://wayclip.com/privacy'
+                                                    className='hover:text-foreground transition-colors'
+                                                >
+                                                    Privacy Policy
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a
+                                                    href='https://wayclip.com/terms'
+                                                    className='hover:text-foreground transition-colors'
+                                                >
+                                                    Terms Of Service
+                                                </a>
+                                            </li>
                                         </ul>
                                     </div>
                                     <div>

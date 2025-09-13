@@ -252,7 +252,7 @@ const DashboardPage = () => {
                                         ))
                                     ) : (
                                         <p className='text-muted-foreground md:col-span-2'>
-                                            You haven't uploaded any clips yet.
+                                            You haven&apos;t uploaded any clips yet.
                                         </p>
                                     )}
                                 </div>
