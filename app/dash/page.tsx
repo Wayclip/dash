@@ -1,19 +1,17 @@
 'use client';
 
-import { Copy } from 'lucide-react';
-import { Trash2 } from 'lucide-react';
+import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { Clip } from '@/contexts/authContext';
 import { useRouter } from 'next/navigation';
-import { Check, LogOut, Unplug } from 'lucide-react';
 import { useAuth } from '@/contexts/authContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import axios from 'axios';
 
@@ -85,44 +83,60 @@ const formatBytes = (bytes: number, decimals = 2) => {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 };
 
-const ClipCard = ({
-    clip,
+const ClipsTable = ({
+    clips,
     onDelete,
     onCopy,
 }: {
-    clip: Clip;
+    clips: Clip[];
     onDelete: (id: string) => void;
     onCopy: (url: string) => void;
 }) => {
-    const clipUrl = `${window.location.origin}/clip/${clip.id}`;
-
     return (
-        <Card>
-            <CardHeader>
-                <a
-                    href={clipUrl}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='hover:underline flex items-center gap-2'
-                >
-                    <CardTitle className='text-base font-medium truncate'>{clip.file_name}</CardTitle>
-                    <ExternalLink className='size-4 text-muted-foreground' />
-                </a>
-                <CardDescription>
-                    {formatBytes(clip.file_size)} &middot; {new Date(clip.created_at).toLocaleDateString()}
-                </CardDescription>
-            </CardHeader>
-            <CardFooter className='flex justify-end gap-2'>
-                <Button variant='outline' size='sm' onClick={() => onCopy(clipUrl)}>
-                    <Copy className='mr-2 size-4' />
-                    Copy URL
-                </Button>
-                <Button variant='destructive' size='sm' onClick={() => onDelete(clip.id)}>
-                    <Trash2 className='mr-2 size-4' />
-                    Delete
-                </Button>
-            </CardFooter>
-        </Card>
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead className='w-[40%]'>File Name</TableHead>
+                    {'file_size' in clips[0] && <TableHead>Size</TableHead>}
+                    {'created_at' in clips[0] && <TableHead>Uploaded</TableHead>}
+                    <TableHead className='text-right'>Actions</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {clips.map((clip) => {
+                    const clipUrl = `${window.location.origin}/clip/${clip.id}`;
+                    return (
+                        <TableRow key={clip.id}>
+                            <TableCell className='font-medium truncate'>
+                                <a
+                                    href={clipUrl}
+                                    target='_blank'
+                                    rel='noopener noreferrer'
+                                    className='hover:underline flex items-center gap-2'
+                                >
+                                    {clip.file_name}
+                                    <ExternalLink className='size-4 text-muted-foreground' />
+                                </a>
+                            </TableCell>
+                            {'file_size' in clip && <TableCell>{formatBytes(clip.file_size)}</TableCell>}
+                            {'created_at' in clip && (
+                                <TableCell>{new Date(clip.created_at).toLocaleDateString()}</TableCell>
+                            )}
+                            <TableCell className='flex justify-end gap-2'>
+                                <Button variant='outline' size='sm' onClick={() => onCopy(clipUrl)}>
+                                    <Copy className='mr-2 size-4' />
+                                    Copy
+                                </Button>
+                                <Button variant='destructive' size='sm' onClick={() => onDelete(clip.id)}>
+                                    <Trash2 className='mr-2 size-4' />
+                                    Delete
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    );
+                })}
+            </TableBody>
+        </Table>
     );
 };
 
@@ -134,9 +148,7 @@ const DashboardPage = () => {
     const [isUpgrading, setIsUpgrading] = useState(false);
 
     useEffect(() => {
-        console.log('dash, isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
         if (!isLoading && !isAuthenticated) {
-            console.log('redirecting to /login');
             router.replace('/login');
         }
     }, [isLoading, isAuthenticated, router]);
@@ -183,12 +195,9 @@ const DashboardPage = () => {
 
     const handleUpgrade = async (apiId: string | null) => {
         if (!apiId) return;
-
         setIsUpgrading(true);
         try {
-            console.log('Upgrading tier');
             const response = await axios.post(`${API_URL}/api/checkout/${apiId}`, {}, { withCredentials: true });
-
             const { url } = response.data;
             if (url) {
                 window.location.href = url;
@@ -231,6 +240,7 @@ const DashboardPage = () => {
                     <header className='sm:py-4'>
                         <h1 className='text-2xl font-semibold'>Dashboard</h1>
                     </header>
+
                     <div className='flex flex-col gap-4'>
                         <header>
                             <h2 className='text-xl font-semibold'>Account Data</h2>
@@ -238,24 +248,13 @@ const DashboardPage = () => {
                         <div className='grid gap-6 md:grid-cols-2'>
                             <div className='flex flex-col gap-6'>
                                 <StatCard title='Hosted Clips' value={userData.clip_count.toString()} />
-                                <div className='grid gap-4 md:grid-cols-2'>
-                                    {clipsLoading ? (
-                                        <p>Loading clips...</p>
-                                    ) : clips.length > 0 ? (
-                                        clips.map((clip) => (
-                                            <ClipCard
-                                                key={clip.id}
-                                                clip={clip}
-                                                onDelete={handleDeleteClip}
-                                                onCopy={handleCopyUrl}
-                                            />
-                                        ))
-                                    ) : (
-                                        <p className='text-muted-foreground md:col-span-2'>
-                                            You haven&apos;t uploaded any clips yet.
-                                        </p>
-                                    )}
-                                </div>
+                                {clipsLoading ? (
+                                    <p>Loading clips...</p>
+                                ) : clips.length > 0 ? (
+                                    <ClipsTable clips={clips} onDelete={handleDeleteClip} onCopy={handleCopyUrl} />
+                                ) : (
+                                    <p className='text-muted-foreground'>You haven&apos;t uploaded any clips yet.</p>
+                                )}
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className='text-base font-medium text-muted-foreground'>
@@ -313,6 +312,7 @@ const DashboardPage = () => {
                             </Card>
                         </div>
                     </div>
+
                     <div className='flex flex-col gap-4'>
                         <header>
                             <h2 className='text-xl font-semibold'>Manage Subscription</h2>
