@@ -13,6 +13,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+    AlertDialogClose,
+} from '@/components/ui/alert-dialog';
 import axios from 'axios';
 
 const API_URL = 'https://wayclip.com';
@@ -60,20 +70,6 @@ const pricingPlans = [
     },
 ];
 
-const StatCard = ({ title, value, description }: { title: string; value: string; description?: string }) => {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className='text-base font-medium text-muted-foreground'>{title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className='text-4xl font-bold tracking-tight'>{value}</p>
-                {description && <p className='text-sm text-muted-foreground pt-1'>{description}</p>}
-            </CardContent>
-        </Card>
-    );
-};
-
 const formatBytes = (bytes: number, decimals = 2) => {
     if (!+bytes) return '0 Bytes';
     const k = 1024;
@@ -104,7 +100,7 @@ const ClipsTable = ({
             </TableHeader>
             <TableBody>
                 {clips.map((clip) => {
-                    const clipUrl = `${window.location.origin}/clip/${clip.id}`;
+                    const clipUrl = `${API_URL}/clip/${clip.id}`;
                     return (
                         <TableRow key={clip.id}>
                             <TableCell className='font-medium truncate'>
@@ -123,14 +119,48 @@ const ClipsTable = ({
                                 <TableCell>{new Date(clip.created_at).toLocaleDateString()}</TableCell>
                             )}
                             <TableCell className='flex justify-end gap-2'>
-                                <Button variant='outline' size='sm' onClick={() => onCopy(clipUrl)}>
-                                    <Copy className='mr-2 size-4' />
-                                    Copy
+                                <Button
+                                    variant='outline'
+                                    size='icon'
+                                    onClick={() => onCopy(clipUrl)}
+                                    className='cursor-pointer'
+                                >
+                                    <Copy className='size-4' />
                                 </Button>
-                                <Button variant='destructive' size='sm' onClick={() => onDelete(clip.id)}>
-                                    <Trash2 className='mr-2 size-4' />
-                                    Delete
-                                </Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger
+                                        render={(props) => (
+                                            <Button
+                                                {...props}
+                                                variant='destructive'
+                                                size='icon'
+                                                className='cursor-pointer'
+                                            >
+                                                <Trash2 className='size-4' />
+                                            </Button>
+                                        )}
+                                    />
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This action cannot be undone. Your clip will be permanently deleted.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogClose
+                                                render={(props) => (
+                                                    <Button {...props} size='sm' variant='ghost'>
+                                                        Cancel
+                                                    </Button>
+                                                )}
+                                            />
+                                            <Button size='sm' variant='destructive' onClick={() => onDelete(clip.id)}>
+                                                Delete
+                                            </Button>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </TableCell>
                         </TableRow>
                     );
@@ -172,14 +202,12 @@ const DashboardPage = () => {
     }, [isAuthenticated]);
 
     const handleDeleteClip = async (clipId: string) => {
-        if (window.confirm('Are you sure you want to delete this clip? This action is permanent.')) {
-            try {
-                await axios.delete(`${API_URL}/api/clip/${clipId}`, { withCredentials: true });
-                setClips((prevClips) => prevClips.filter((clip) => clip.id !== clipId));
-            } catch (error) {
-                console.error('Failed to delete clip:', error);
-                toast.error('An error occurred while deleting the clip. Please try again.');
-            }
+        try {
+            await axios.delete(`${API_URL}/api/clip/${clipId}`, { withCredentials: true });
+            setClips((prevClips) => prevClips.filter((clip) => clip.id !== clipId));
+        } catch (error) {
+            console.error('Failed to delete clip:', error);
+            toast.error('An error occurred while deleting the clip. Please try again.');
         }
     };
 
@@ -247,14 +275,68 @@ const DashboardPage = () => {
                         </header>
                         <div className='grid gap-6 md:grid-cols-2'>
                             <div className='flex flex-col gap-6'>
-                                <StatCard title='Hosted Clips' value={userData.clip_count.toString()} />
-                                {clipsLoading ? (
-                                    <p>Loading clips...</p>
-                                ) : clips.length > 0 ? (
-                                    <ClipsTable clips={clips} onDelete={handleDeleteClip} onCopy={handleCopyUrl} />
-                                ) : (
-                                    <p className='text-muted-foreground'>You haven&apos;t uploaded any clips yet.</p>
-                                )}
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className='text-base font-medium text-muted-foreground'>
+                                            Hosted Clips
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className='text-4xl font-bold tracking-tight'>{userData.clip_count}</p>
+
+                                        {clipsLoading ? (
+                                            <p>Loading clips...</p>
+                                        ) : clips.length > 0 ? (
+                                            <ClipsTable
+                                                clips={clips}
+                                                onDelete={handleDeleteClip}
+                                                onCopy={handleCopyUrl}
+                                            />
+                                        ) : (
+                                            <p className='text-muted-foreground'>
+                                                You haven&apos;t uploaded any clips yet.
+                                            </p>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            <div className='flex flex-col gap-6'>
+                                <Card className='flex flex-col'>
+                                    <CardHeader>
+                                        <CardTitle>Linked Account</CardTitle>
+                                        <CardDescription>Your Wayclip account is connected to GitHub.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className='flex items-center gap-4'>
+                                        <a
+                                            href={`https://github.com/${userData.username}`}
+                                            target='_blank'
+                                            rel='noopener noreferrer'
+                                        >
+                                            <Avatar className='h-12 w-12'>
+                                                <AvatarImage src={userData.avatar_url ?? ''} alt='GitHub Avatar' />
+                                                <AvatarFallback>
+                                                    {userData.username.charAt(0).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        </a>
+                                        <div>
+                                            <p className='font-semibold text-lg'>{userData.username}</p>
+                                            <p className='text-sm text-muted-foreground'>GitHub Account</p>
+                                        </div>
+                                    </CardContent>
+                                    <CardFooter className='mt-auto flex gap-3 border-t pt-6'>
+                                        <Button variant='outline' onClick={logout}>
+                                            <LogOut className='mr-2 size-4' />
+                                            Sign Out
+                                        </Button>
+                                        <Button variant='destructive' onClick={handleRemoveConnection}>
+                                            <Unplug className='mr-2 size-4' />
+                                            Remove Connection
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className='text-base font-medium text-muted-foreground'>
@@ -269,6 +351,9 @@ const DashboardPage = () => {
                                             <span className='text-muted-foreground'>
                                                 / {storageLimitGB.toFixed(0)} GB used
                                             </span>
+                                            <span className='ml-auto text-3xl font-bold text-muted-foreground tracking-tight'>
+                                                {Math.round((storageUsedGB / storageLimitGB) * 100)}%
+                                            </span>
                                         </div>
                                         <Progress
                                             value={storageUsedPercentage}
@@ -277,43 +362,10 @@ const DashboardPage = () => {
                                     </CardContent>
                                 </Card>
                             </div>
-
-                            <Card className='flex flex-col'>
-                                <CardHeader>
-                                    <CardTitle>Linked Account</CardTitle>
-                                    <CardDescription>Your Wayclip account is connected to GitHub.</CardDescription>
-                                </CardHeader>
-                                <CardContent className='flex items-center gap-4'>
-                                    <a
-                                        href={`https://github.com/${userData.username}`}
-                                        target='_blank'
-                                        rel='noopener noreferrer'
-                                    >
-                                        <Avatar className='h-12 w-12'>
-                                            <AvatarImage src={userData.avatar_url ?? ''} alt='GitHub Avatar' />
-                                            <AvatarFallback>{userData.username.charAt(0).toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                    </a>
-                                    <div>
-                                        <p className='font-semibold text-lg'>{userData.username}</p>
-                                        <p className='text-sm text-muted-foreground'>GitHub Account</p>
-                                    </div>
-                                </CardContent>
-                                <CardFooter className='mt-auto flex gap-3 border-t pt-6'>
-                                    <Button variant='outline' onClick={logout}>
-                                        <LogOut className='mr-2 size-4' />
-                                        Sign Out
-                                    </Button>
-                                    <Button variant='destructive' onClick={handleRemoveConnection}>
-                                        <Unplug className='mr-2 size-4' />
-                                        Remove Connection
-                                    </Button>
-                                </CardFooter>
-                            </Card>
                         </div>
                     </div>
 
-                    <div className='flex flex-col gap-4'>
+                    <div className='flex flex-col gap-4 mt-8'>
                         <header>
                             <h2 className='text-xl font-semibold'>Manage Subscription</h2>
                             <p className='text-muted-foreground'>
