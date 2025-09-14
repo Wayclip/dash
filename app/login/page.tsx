@@ -275,7 +275,7 @@ const LoginClientComponent = () => {
                                         <Input
                                             id='email'
                                             type='email'
-                                            placeholder='m@example.com'
+                                            placeholder='me@example.com'
                                             required
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
@@ -350,7 +350,7 @@ const LoginClientComponent = () => {
                                         <Input
                                             id='register-email'
                                             type='email'
-                                            placeholder='m@example.com'
+                                            placeholder='me@example.com'
                                             required
                                             value={registerEmail}
                                             onChange={(e) => setRegisterEmail(e.target.value)}

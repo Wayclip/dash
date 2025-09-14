@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         try {
             console.log('Fetching /me');
-            const response = await axios.get(`${API_URL}/auth/me`, {
+            const response = await axios.get(`${API_URL}/api/me`, {
                 withCredentials: true,
             });
 
