@@ -1,8 +1,9 @@
 'use client';
 
-import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug } from 'lucide-react';
+import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug, Shield, ShieldCheck, Key, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { Clip } from '@/contexts/authContext';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/authContext';
@@ -12,6 +13,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import {
     AlertDialog,
@@ -128,18 +140,11 @@ const ClipsTable = ({
                                     <Copy className='size-4' />
                                 </Button>
                                 <AlertDialog>
-                                    <AlertDialogTrigger
-                                        render={(props) => (
-                                            <Button
-                                                {...props}
-                                                variant='destructive'
-                                                size='icon'
-                                                className='cursor-pointer'
-                                            >
-                                                <Trash2 className='size-4' />
-                                            </Button>
-                                        )}
-                                    />
+                                    <AlertDialogTrigger>
+                                        <Button variant='destructive' size='icon' className='cursor-pointer'>
+                                            <Trash2 className='size-4' />
+                                        </Button>
+                                    </AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -148,13 +153,11 @@ const ClipsTable = ({
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
-                                            <AlertDialogClose
-                                                render={(props) => (
-                                                    <Button {...props} size='sm' variant='ghost'>
-                                                        Cancel
-                                                    </Button>
-                                                )}
-                                            />
+                                            <AlertDialogClose>
+                                                <Button size='sm' variant='ghost'>
+                                                    Cancel
+                                                </Button>
+                                            </AlertDialogClose>
                                             <Button size='sm' variant='destructive' onClick={() => onDelete(clip.id)}>
                                                 Delete
                                             </Button>
@@ -170,12 +173,144 @@ const ClipsTable = ({
     );
 };
 
+const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
+    const [step, setStep] = useState<'setup' | 'verify'>('setup');
+    const [secret, setSecret] = useState('');
+    const [qrCodeUrl, setQrCodeUrl] = useState('');
+    const [verificationCode, setVerificationCode] = useState('');
+    const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const initiate2FA = async () => {
+        setIsLoading(true);
+        try {
+            const response = await axios.post(`${API_URL}/auth/2fa/setup`, {}, { withCredentials: true });
+            setSecret(response.data.secret);
+            setQrCodeUrl(response.data.qr_code_base64);
+            setStep('verify');
+        } catch (error) {
+            toast.error('Failed to initialize 2FA setup.');
+            console.error('2FA setup failed:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const verify2FA = async () => {
+        setIsLoading(true);
+        try {
+            const response = await axios.post(
+                `${API_URL}/auth/2fa/verify`,
+                {
+                    secret: secret,
+                    code: verificationCode,
+                },
+                { withCredentials: true },
+            );
+            setRecoveryCodes(response.data.recovery_codes);
+            toast.success('2FA enabled successfully!');
+            onSuccess();
+        } catch (error) {
+            toast.error('Invalid verification code. Please try again.');
+            console.error('2FA verification failed:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    if (recoveryCodes.length > 0) {
+        return (
+            <div className='space-y-4'>
+                <div className='text-center'>
+                    <ShieldCheck className='mx-auto h-12 w-12 text-green-500' />
+                    <h3 className='text-lg font-semibold'>2FA Enabled Successfully!</h3>
+                </div>
+                <div className='space-y-2'>
+                    <Label>Recovery Codes</Label>
+                    <p className='text-sm text-muted-foreground'>
+                        Save these recovery codes in a safe place. You can use them to access your account if you lose
+                        your 2FA device.
+                    </p>
+                    <div className='grid grid-cols-2 gap-2 p-4 bg-muted rounded'>
+                        {recoveryCodes.map((code, index) => (
+                            <div key={index} className='font-mono text-sm'>
+                                {index + 1}. {code}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <Button
+                    onClick={() => {
+                        navigator.clipboard.writeText(recoveryCodes.join('\n'));
+                        toast.success('Recovery codes copied to clipboard!');
+                    }}
+                    className='w-full'
+                >
+                    <Copy className='mr-2 h-4 w-4' />
+                    Copy Recovery Codes
+                </Button>
+            </div>
+        );
+    }
+
+    if (step === 'verify') {
+        return (
+            <div className='space-y-4'>
+                <div>
+                    <h3 className='text-lg font-semibold'>Scan QR Code</h3>
+                    <p className='text-sm text-muted-foreground'>
+                        Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                    </p>
+                </div>
+                <div className='flex justify-center'>
+                    <Image src={qrCodeUrl} alt='2FA QR Code' className='border rounded' />
+                </div>
+                <div className='space-y-2'>
+                    <Label>Manual Entry Key (if needed)</Label>
+                    <Input value={secret} readOnly className='font-mono text-xs' />
+                </div>
+                <div className='space-y-2'>
+                    <Label htmlFor='verification-code'>Enter Verification Code</Label>
+                    <Input
+                        id='verification-code'
+                        type='text'
+                        placeholder='000000'
+                        maxLength={6}
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className='text-center text-lg tracking-widest'
+                    />
+                </div>
+                <Button onClick={verify2FA} disabled={isLoading || verificationCode.length !== 6} className='w-full'>
+                    {isLoading ? 'Verifying...' : 'Enable 2FA'}
+                </Button>
+            </div>
+        );
+    }
+
+    return (
+        <div className='space-y-4'>
+            <div className='text-center'>
+                <Shield className='mx-auto h-12 w-12 text-blue-500' />
+                <h3 className='text-lg font-semibold'>Enable Two-Factor Authentication</h3>
+                <p className='text-sm text-muted-foreground'>
+                    Add an extra layer of security to your account with 2FA.
+                </p>
+            </div>
+            <Button onClick={initiate2FA} disabled={isLoading} className='w-full'>
+                {isLoading ? 'Setting up...' : 'Start Setup'}
+            </Button>
+        </div>
+    );
+};
+
 const DashboardPage = () => {
-    const { isAuthenticated, isLoading, user: userData, logout } = useAuth();
+    const { isAuthenticated, isLoading, user: userData, logout, refreshUser } = useAuth();
     const router = useRouter();
     const [clips, setClips] = useState<Clip[]>([]);
     const [clipsLoading, setClipsLoading] = useState(true);
     const [isUpgrading, setIsUpgrading] = useState(false);
+    const [show2FADialog, setShow2FADialog] = useState(false);
 
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
@@ -214,7 +349,7 @@ const DashboardPage = () => {
     const handleRemoveConnection = async () => {
         if (
             window.confirm(
-                'Are you sure you want to remove your GitHub connection and delete your account? This action cannot be undone.',
+                'Are you sure you want to remove your connection and delete your account? This action cannot be undone.',
             )
         ) {
             alert('Account deletion functionality is not yet implemented on the backend.');
@@ -245,6 +380,11 @@ const DashboardPage = () => {
         toast.success('URL copied to clipboard!');
     };
 
+    const handle2FASuccess = () => {
+        setShow2FADialog(false);
+        refreshUser();
+    };
+
     if (isLoading) {
         return (
             <div className='flex items-center justify-center min-h-screen'>
@@ -262,6 +402,9 @@ const DashboardPage = () => {
         const storageLimitGB = storageLimitBytes > 0 ? storageLimitBytes / (1024 * 1024 * 1024) : 0;
         const storageUsedPercentage = storageLimitBytes > 0 ? (storageUsedBytes / storageLimitBytes) * 100 : 0;
 
+        const connectionType = userData.github_id ? 'GitHub' : userData.email ? 'Email' : 'OAuth';
+        const isEmailVerified = userData.email_verified_at !== null && userData.email_verified_at !== undefined;
+
         return (
             <div className='flex min-h-screen w-full flex-col bg-background/40 pt-14 sm:pt-20'>
                 <main className='flex w-full flex-1 flex-col gap-8 p-4 sm:px-6 sm:py-0 max-w-6xl mx-auto'>
@@ -274,7 +417,7 @@ const DashboardPage = () => {
                             <h2 className='text-xl font-semibold'>Account Data</h2>
                         </header>
                         <div className='grid gap-6 md:grid-cols-2'>
-                            <div className='flex flex-col gap-6'>
+                            <div className='flex flex-col gap-2'>
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className='text-base font-medium text-muted-foreground'>
@@ -304,25 +447,52 @@ const DashboardPage = () => {
                             <div className='flex flex-col gap-6'>
                                 <Card className='flex flex-col'>
                                     <CardHeader>
-                                        <CardTitle>Linked Account</CardTitle>
-                                        <CardDescription>Your Wayclip account is connected to GitHub.</CardDescription>
+                                        <CardTitle>Account Information</CardTitle>
+                                        <CardDescription>Your account details and connection status.</CardDescription>
                                     </CardHeader>
-                                    <CardContent className='flex items-center gap-4'>
-                                        <a
-                                            href={`https://github.com/${userData.username}`}
-                                            target='_blank'
-                                            rel='noopener noreferrer'
-                                        >
+                                    <CardContent className='space-y-4'>
+                                        <div className='flex items-center gap-4'>
                                             <Avatar className='h-12 w-12'>
-                                                <AvatarImage src={userData.avatar_url ?? ''} alt='GitHub Avatar' />
+                                                <AvatarImage src={userData.avatar_url ?? ''} alt='Avatar' />
                                                 <AvatarFallback>
                                                     {userData.username.charAt(0).toUpperCase()}
                                                 </AvatarFallback>
                                             </Avatar>
-                                        </a>
-                                        <div>
-                                            <p className='font-semibold text-lg'>{userData.username}</p>
-                                            <p className='text-sm text-muted-foreground'>GitHub Account</p>
+                                            <div>
+                                                <p className='font-semibold text-lg'>{userData.username}</p>
+                                                <p className='text-sm text-muted-foreground'>
+                                                    {connectionType} Account
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {userData.email && (
+                                            <div className='space-y-1'>
+                                                <p className='text-sm font-medium'>Email</p>
+                                                <div className='flex items-center gap-2'>
+                                                    <p className='text-sm'>{userData.email}</p>
+                                                    <Badge variant={isEmailVerified ? 'default' : 'destructive'}>
+                                                        {isEmailVerified ? 'Verified' : 'Not Verified'}
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className='space-y-1'>
+                                            <p className='text-sm font-medium'>Two-Factor Authentication</p>
+                                            <div className='flex items-center gap-2'>
+                                                {userData.two_factor_enabled ? (
+                                                    <Badge variant='default' className='flex items-center gap-1'>
+                                                        <ShieldCheck className='h-3 w-3' />
+                                                        Enabled
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant='secondary' className='flex items-center gap-1'>
+                                                        <Shield className='h-3 w-3' />
+                                                        Disabled
+                                                    </Badge>
+                                                )}
+                                            </div>
                                         </div>
                                     </CardContent>
                                     <CardFooter className='mt-auto flex gap-3 border-t pt-6'>
@@ -330,6 +500,25 @@ const DashboardPage = () => {
                                             <LogOut className='mr-2 size-4' />
                                             Sign Out
                                         </Button>
+                                        {!userData.two_factor_enabled && (
+                                            <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
+                                                <DialogTrigger asChild>
+                                                    <Button>
+                                                        <Key className='mr-2 size-4' />
+                                                        Enable 2FA
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className='sm:max-w-md'>
+                                                    <DialogHeader>
+                                                        <DialogTitle>Two-Factor Authentication</DialogTitle>
+                                                        <DialogDescription>
+                                                            Secure your account with an additional authentication step.
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+                                                    <TwoFactorSetup onSuccess={handle2FASuccess} />
+                                                </DialogContent>
+                                            </Dialog>
+                                        )}
                                         <Button variant='destructive' onClick={handleRemoveConnection}>
                                             <Unplug className='mr-2 size-4' />
                                             Remove Connection

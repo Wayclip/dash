@@ -5,11 +5,14 @@ import axios from 'axios';
 
 interface UserProfile {
     id: string;
-    github_id: number;
+    github_id?: number;
     username: string;
+    email?: string;
     avatar_url: string | null;
     tier: 'free' | 'tier1' | 'tier2' | 'tier3';
     is_banned: boolean;
+    two_factor_enabled: boolean;
+    email_verified_at?: string;
     storage_used: number;
     storage_limit: number;
     clip_count: number;
@@ -20,6 +23,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     isLoading: boolean;
     logout: () => void;
+    refreshUser: () => Promise<void>;
 }
 
 export interface Clip {
@@ -37,39 +41,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            if (!API_URL) {
-                console.error('Error: NEXT_PUBLIC_API_URL is not defined. Please check your .env.local file.');
-                setIsLoading(false);
-                return;
-            }
-            try {
-                console.log('Fetching /me');
-                const response = await axios.get(`${API_URL}/api/me`, {
-                    withCredentials: true,
-                });
+    const fetchUser = async () => {
+        if (!API_URL) {
+            console.error('Error: NEXT_PUBLIC_API_URL is not defined. Please check your .env.local file.');
+            setIsLoading(false);
+            return;
+        }
+        try {
+            console.log('Fetching /me');
+            const response = await axios.get(`${API_URL}/auth/me`, {
+                withCredentials: true,
+            });
 
-                if (response.data) {
-                    setUser(response.data);
-                } else {
-                    setUser(null);
-                }
-            } catch (error) {
-                console.error('Failed to fetch user:', error);
+            if (response.data) {
+                setUser(response.data);
+            } else {
                 setUser(null);
-            } finally {
-                setIsLoading(false);
             }
-        };
+        } catch (error) {
+            console.error('Failed to fetch user:', error);
+            setUser(null);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchUser();
     }, []);
 
-    const logout = () => {
+    const refreshUser = async () => {
+        await fetchUser();
+    };
+
+    const logout = async () => {
         console.log('Triggered logout');
-        setUser(null);
-        window.location.href = '/login';
+        try {
+            await axios.post(
+                `${API_URL}/auth/logout`,
+                {},
+                {
+                    withCredentials: true,
+                },
+            );
+        } catch (error) {
+            console.error('Logout request failed:', error);
+        } finally {
+            setUser(null);
+            window.location.href = '/login';
+        }
     };
 
     const value = {
@@ -77,6 +97,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated: !!user,
         isLoading,
         logout,
+        refreshUser,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
