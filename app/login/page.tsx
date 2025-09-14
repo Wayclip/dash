@@ -68,7 +68,7 @@ const LoginClientComponent = () => {
                 },
             );
 
-            if (response.data.token) {
+            if (response.status === 200 && response.data.success) {
                 window.location.href = '/dash';
             } else if (response.data['2fa_required']) {
                 setTwoFAToken(response.data['2fa_token']);
@@ -234,7 +234,7 @@ const LoginClientComponent = () => {
                             <TabsTrigger value='register'>Register</TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value='login' className='space-y-4'>
+                        <TabsContent value='login' className='space-y-4 mt-4'>
                             <div className='grid gap-4'>
                                 <Button
                                     onClick={() => handleOAuthLogin('github')}
@@ -265,9 +265,7 @@ const LoginClientComponent = () => {
                                         <span className='w-full border-t' />
                                     </div>
                                     <div className='relative flex justify-center text-xs uppercase'>
-                                        <span className='bg-background px-2 text-muted-foreground'>
-                                            Or continue with email
-                                        </span>
+                                        <span className='px-2 text-muted-foreground'>Or continue with email</span>
                                     </div>
                                 </div>
 
@@ -331,9 +329,7 @@ const LoginClientComponent = () => {
                                         <span className='w-full border-t' />
                                     </div>
                                     <div className='relative flex justify-center text-xs uppercase'>
-                                        <span className='bg-background px-2 text-muted-foreground'>
-                                            Or register with email
-                                        </span>
+                                        <span className='px-2 text-muted-foreground'>Or register with email</span>
                                     </div>
                                 </div>
 
