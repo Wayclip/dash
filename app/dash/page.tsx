@@ -108,7 +108,6 @@ const ClipsTable = ({
     onDelete: (id: string) => void;
     onCopy: (url: string) => void;
 }) => {
-    // Return early if there are no clips to prevent errors on clips[0]
     if (!clips || clips.length === 0) {
         return <p className='text-muted-foreground'>You haven&apos;t uploaded any clips yet.</p>;
     }
