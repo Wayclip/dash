@@ -1,6 +1,7 @@
 'use client';
 
-import { Github, Mail, KeyRound } from 'lucide-react';
+import { Suspense, useEffect, useState, FormEvent } from 'react';
+import { Github, KeyRound } from 'lucide-react';
 import { BsDiscord, BsGoogle } from '@vertisanpro/react-icons/bs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,13 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/authContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState, FormEvent } from 'react';
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import { toast } from 'sonner';
 
 const API_URL = 'https://wayclip.com';
 
-export default function LoginPage() {
+const LoginClientComponent = () => {
     const { isAuthenticated, isLoading } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -23,13 +23,11 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-
     const [registerEmail, setRegisterEmail] = useState('');
     const [registerUsername, setRegisterUsername] = useState('');
     const [registerPassword, setRegisterPassword] = useState('');
     const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
     const [isRegistering, setIsRegistering] = useState(false);
-
     const [show2FA, setShow2FA] = useState(false);
     const [twoFAToken, setTwoFAToken] = useState('');
     const [twoFACode, setTwoFACode] = useState('');
@@ -77,16 +75,20 @@ export default function LoginPage() {
                 setShow2FA(true);
                 toast.info('Please enter your 2FA code to complete login.');
             }
-        } catch (error: any) {
-            const errorMessage = error.response?.data || 'Login failed. Please check your email and password.';
-            if (errorMessage.includes('verify your email')) {
-                toast.error('Please verify your email address before logging in.');
-                const resend = confirm('Would you like to resend the verification email?');
-                if (resend) {
-                    handleResendVerification(email);
+        } catch (error) {
+            if (isAxiosError(error)) {
+                const errorMessage = error.response?.data || 'Login failed. Please check your email and password.';
+                if (typeof errorMessage === 'string' && errorMessage.includes('verify your email')) {
+                    toast.error('Please verify your email address before logging in.');
+                    const resend = confirm('Would you like to resend the verification email?');
+                    if (resend) {
+                        handleResendVerification(email);
+                    }
+                } else {
+                    toast.error(errorMessage);
                 }
             } else {
-                toast.error(errorMessage);
+                toast.error('An unexpected error occurred.');
             }
             console.error('Password login failed:', error);
         } finally {
@@ -112,7 +114,7 @@ export default function LoginPage() {
             if (response.data.token) {
                 window.location.href = '/dash';
             }
-        } catch (error: any) {
+        } catch (error) {
             toast.error('Invalid 2FA code. Please try again.');
             console.error('2FA login failed:', error);
         } finally {
@@ -142,12 +144,15 @@ export default function LoginPage() {
             });
 
             toast.success('Registration successful! Please check your email to verify your account.');
-            // Switch to login tab
             const loginTab = document.querySelector('[data-value="login"]') as HTMLElement;
             loginTab?.click();
-        } catch (error: any) {
-            const errorMessage = error.response?.data || 'Registration failed. Please try again.';
-            toast.error(errorMessage);
+        } catch (error) {
+            if (isAxiosError(error)) {
+                const errorMessage = error.response?.data || 'Registration failed. Please try again.';
+                toast.error(errorMessage);
+            } else {
+                toast.error('Registration failed. Please try again.');
+            }
             console.error('Registration failed:', error);
         } finally {
             setIsRegistering(false);
@@ -159,6 +164,7 @@ export default function LoginPage() {
             await axios.post(`${API_URL}/auth/resend-verification`, { email });
             toast.success('Verification email sent (if account exists).');
         } catch (error) {
+            console.error(error);
             toast.error('Failed to send verification email.');
         }
     };
@@ -388,4 +394,14 @@ export default function LoginPage() {
             </Card>
         </div>
     );
-}
+};
+
+const LoginPage = () => {
+    return (
+        <Suspense fallback={<div className='flex items-center justify-center min-h-screen'>Loading...</div>}>
+            <LoginClientComponent />
+        </Suspense>
+    );
+};
+
+export default LoginPage;

@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug, Shield, ShieldCheck, Key, QrCode } from 'lucide-react';
+import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug, Shield, ShieldCheck, Key } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -19,7 +19,6 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
