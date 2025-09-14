@@ -447,38 +447,16 @@ const DashboardPage = () => {
                         <header>
                             <h2 className='text-xl font-semibold'>Account Data</h2>
                         </header>
-                        <div className='grid gap-6 md:grid-cols-2'>
-                            <div className='flex flex-col gap-2'>
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className='text-base font-medium text-muted-foreground'>
-                                            Hosted Clips
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className='text-4xl font-bold tracking-tight'>{userData.clip_count}</p>
-                                        {clipsLoading ? (
-                                            <p>Loading clips...</p>
-                                        ) : (
-                                            <ClipsTable
-                                                clips={clips}
-                                                onDelete={handleDeleteClip}
-                                                onCopy={handleCopyUrl}
-                                            />
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            </div>
-
-                            <div className='flex flex-col gap-6'>
-                                <Card className='flex flex-col'>
-                                    <CardHeader>
-                                        <CardTitle>Account Information</CardTitle>
-                                        <CardDescription>
-                                            Manage your account details and security settings.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className='space-y-6'>
+                        <div className='flex flex-col gap-6'>
+                            <Card className='flex flex-col'>
+                                <CardHeader>
+                                    <CardTitle>Account Information</CardTitle>
+                                    <CardDescription>
+                                        Manage your account details and security settings.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className='space-y-6'>
+                                    <div className='flex flex-row gap-12'>
                                         <div className='flex items-center gap-4'>
                                             <Avatar className='h-12 w-12'>
                                                 <AvatarImage src={userData.avatar_url ?? ''} alt='Avatar' />
@@ -503,58 +481,6 @@ const DashboardPage = () => {
                                             </div>
                                         )}
 
-                                        <div className='space-y-3'>
-                                            <Label>Connected Accounts</Label>
-                                            <p className='text-sm text-muted-foreground'>
-                                                These are the services you can use to sign in.
-                                            </p>
-                                            <div className='space-y-2'>
-                                                {userData.connected_accounts.map((provider) => (
-                                                    <div
-                                                        key={provider}
-                                                        className='flex items-center justify-between rounded-md border p-3'
-                                                    >
-                                                        <div className='flex items-center gap-3'>
-                                                            {providerIcons[provider]}
-                                                            <span className='font-medium capitalize'>{provider}</span>
-                                                        </div>
-                                                        <AlertDialog>
-                                                            <AlertDialogTrigger>
-                                                                <Button
-                                                                    variant='ghost'
-                                                                    size='sm'
-                                                                    disabled={userData.connected_accounts.length <= 1}
-                                                                    className='text-xs'
-                                                                >
-                                                                    <Unplug className='mr-2 h-3 w-3' />
-                                                                    Unlink
-                                                                </Button>
-                                                            </AlertDialogTrigger>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader>
-                                                                    <AlertDialogTitle>
-                                                                        Unlink {provider}?
-                                                                    </AlertDialogTitle>
-                                                                    <AlertDialogDescription>
-                                                                        Are you sure? You will no longer be able to log
-                                                                        in using this {provider} account.
-                                                                    </AlertDialogDescription>
-                                                                </AlertDialogHeader>
-                                                                <AlertDialogFooter>
-                                                                    <AlertDialogClose>Cancel</AlertDialogClose>
-                                                                    <Button
-                                                                        onClick={() => handleUnlinkProvider(provider)}
-                                                                    >
-                                                                        Continue
-                                                                    </Button>
-                                                                </AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
                                         <div className='space-y-1'>
                                             <p className='text-sm font-medium'>Two-Factor Authentication</p>
                                             <div className='flex items-center gap-2'>
@@ -571,88 +497,152 @@ const DashboardPage = () => {
                                                 </Badge>
                                             </div>
                                         </div>
-                                    </CardContent>
-                                    <CardFooter className='mt-auto flex flex-wrap gap-2 border-t pt-6'>
-                                        <Button variant='outline' onClick={logout}>
-                                            <LogOut className='mr-2 size-4' />
-                                            Sign Out
-                                        </Button>
-                                        {!userData.two_factor_enabled && (
-                                            <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
-                                                <DialogTrigger asChild>
-                                                    <Button>
-                                                        <Key className='mr-2 size-4' />
-                                                        Enable 2FA
-                                                    </Button>
-                                                </DialogTrigger>
-                                                <DialogContent className='sm:max-w-md'>
-                                                    <DialogHeader>
-                                                        <DialogTitle>Two-Factor Authentication</DialogTitle>
-                                                        <DialogDescription>
-                                                            Secure your account by requiring a second verification step.
-                                                        </DialogDescription>
-                                                    </DialogHeader>
-                                                    <TwoFactorSetup onSuccess={handle2FASuccess} />
-                                                </DialogContent>
-                                            </Dialog>
-                                        )}
-                                        <AlertDialog>
-                                            <AlertDialogTrigger>
-                                                <Button variant='destructive'>
-                                                    <Trash2 className='mr-2 size-4' />
-                                                    Delete Account
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This action is irreversible. All your data, including your
-                                                        clips, will be permanently deleted. This cannot be undone.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogClose>Cancel</AlertDialogClose>
-                                                    <Button variant='destructive' onClick={handleDeleteAccount}>
-                                                        Yes, delete my account
-                                                    </Button>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </CardFooter>
-                                </Card>
+                                    </div>
 
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className='text-base font-medium text-muted-foreground'>
-                                            Storage Usage
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className='space-y-4'>
-                                        <div className='flex items-baseline gap-2'>
-                                            <p className='text-4xl font-bold tracking-tight'>
-                                                {storageUsedGB.toFixed(2)} GB
-                                            </p>
-                                            <span className='text-muted-foreground'>
-                                                / {storageLimitGB > 0 ? `${storageLimitGB.toFixed(0)} GB` : '2 GB'} used
-                                            </span>
-                                            <span className='ml-auto text-3xl font-bold text-muted-foreground tracking-tight'>
-                                                {storageLimitGB > 0
-                                                    ? `${Math.round((storageUsedGB / storageLimitGB) * 100)}%`
-                                                    : '0%'}
-                                            </span>
+                                    <div className='space-y-3'>
+                                        <Label>Connected Accounts</Label>
+                                        <p className='text-sm text-muted-foreground'>
+                                            These are the services you can use to sign in.
+                                        </p>
+                                        <div className='space-y-2'>
+                                            {userData.connected_accounts.map((provider) => (
+                                                <div
+                                                    key={provider}
+                                                    className='flex items-center justify-between rounded-md border p-3'
+                                                >
+                                                    <div className='flex items-center gap-3'>
+                                                        {providerIcons[provider]}
+                                                        <span className='font-medium capitalize'>{provider}</span>
+                                                    </div>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger>
+                                                            <Button
+                                                                variant='ghost'
+                                                                size='sm'
+                                                                disabled={userData.connected_accounts.length <= 1}
+                                                                className='text-xs cursor-pointer'
+                                                            >
+                                                                <Unplug className='mr-2 h-3 w-3' />
+                                                                Unlink
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Unlink {provider}?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Are you sure? You will no longer be able to log in
+                                                                    using this {provider} account.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogClose>Cancel</AlertDialogClose>
+                                                                <Button onClick={() => handleUnlinkProvider(provider)}>
+                                                                    Continue
+                                                                </Button>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </div>
+                                            ))}
                                         </div>
-                                        <Progress
-                                            value={storageUsedPercentage}
-                                            aria-label={`${storageUsedPercentage.toFixed(0)}% used`}
-                                        />
-                                    </CardContent>
-                                </Card>
-                            </div>
+                                    </div>
+                                </CardContent>
+                                <CardFooter className='mt-auto flex flex-wrap gap-2 border-t pt-6'>
+                                    <Button variant='outline' onClick={logout} className='cursor-pointer'>
+                                        <LogOut className='mr-2 size-4' />
+                                        Sign Out
+                                    </Button>
+                                    {!userData.two_factor_enabled && (
+                                        <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
+                                            <DialogTrigger asChild>
+                                                <Button className='cursor-pointer'>
+                                                    <Key className='mr-2 size-4' />
+                                                    Enable 2FA
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className='sm:max-w-md'>
+                                                <DialogHeader>
+                                                    <DialogTitle>Two-Factor Authentication</DialogTitle>
+                                                    <DialogDescription>
+                                                        Secure your account by requiring a second verification step.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <TwoFactorSetup onSuccess={handle2FASuccess} />
+                                            </DialogContent>
+                                        </Dialog>
+                                    )}
+                                    <AlertDialog>
+                                        <AlertDialogTrigger>
+                                            <Button variant='destructive' className='cursor-pointer'>
+                                                <Trash2 className='mr-2 size-4' />
+                                                Delete Account
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action is irreversible. All your data, including your clips,
+                                                    will be permanently deleted. This cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogClose>Cancel</AlertDialogClose>
+                                                <Button variant='destructive' onClick={handleDeleteAccount}>
+                                                    Yes, delete my account
+                                                </Button>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </CardFooter>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className='text-base font-medium text-muted-foreground'>
+                                        Storage Usage
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className='space-y-4'>
+                                    <div className='flex items-baseline gap-2'>
+                                        <p className='text-4xl font-bold tracking-tight'>
+                                            {storageUsedGB.toFixed(2)} GB
+                                        </p>
+                                        <span className='text-muted-foreground'>
+                                            / {storageLimitGB > 0 ? `${storageLimitGB.toFixed(0)} GB` : '2 GB'} used
+                                        </span>
+                                        <span className='ml-auto text-3xl font-bold text-muted-foreground tracking-tight'>
+                                            {storageLimitGB > 0
+                                                ? `${Math.round((storageUsedGB / storageLimitGB) * 100)}%`
+                                                : '0%'}
+                                        </span>
+                                    </div>
+                                    <Progress
+                                        value={storageUsedPercentage}
+                                        aria-label={`${storageUsedPercentage.toFixed(0)}% used`}
+                                    />
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className='text-base font-medium text-muted-foreground'>
+                                        Hosted Clips
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className='text-4xl font-bold tracking-tight'>{userData.clip_count}</p>
+                                    {clipsLoading ? (
+                                        <p>Loading clips...</p>
+                                    ) : (
+                                        <ClipsTable clips={clips} onDelete={handleDeleteClip} onCopy={handleCopyUrl} />
+                                    )}
+                                </CardContent>
+                            </Card>
                         </div>
                     </div>
 
-                    <div className='flex flex-col gap-4 mt-8'>
+                    <div className='flex flex-col gap-4 my-8'>
                         <header>
                             <h2 className='text-xl font-semibold'>Manage Subscription</h2>
                             <p className='text-muted-foreground'>
