@@ -192,7 +192,7 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
     const initiate2FA = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.post(`${API_URL}/auth/2fa/setup`, {}, { withCredentials: true });
+            const response = await axios.post(`${API_URL}/api/2fa/setup`, {}, { withCredentials: true });
             setSecret(response.data.secret);
             setQrCodeUrl(response.data.qr_code_base64);
             setStep('verify');
@@ -208,7 +208,7 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
         setIsLoading(true);
         try {
             const response = await axios.post(
-                `${API_URL}/auth/2fa/verify`,
+                `${API_URL}/api/2fa/verify`,
                 {
                     secret: secret,
                     code: verificationCode,
@@ -217,7 +217,6 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
             );
             setRecoveryCodes(response.data.recovery_codes);
             toast.success('2FA enabled successfully!');
-            // The onSuccess callback will close the dialog and refresh user data
         } catch (error) {
             toast.error('Invalid verification code. Please try again.');
             console.error('2FA verification failed:', error);
