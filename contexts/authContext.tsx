@@ -3,6 +3,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
 
+type CredentialProvider = 'email' | 'github' | 'google' | 'discord';
+
 interface UserProfile {
     id: string;
     github_id?: number;
@@ -16,6 +18,7 @@ interface UserProfile {
     storage_used: number;
     storage_limit: number;
     clip_count: number;
+    connected_accounts: CredentialProvider[];
 }
 
 interface AuthContextType {
@@ -77,13 +80,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const logout = async () => {
         console.log('Triggered logout');
         try {
-            await axios.post(
-                `${API_URL}/auth/logout`,
-                {},
-                {
-                    withCredentials: true,
-                },
-            );
+            await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
         } catch (error) {
             console.error('Logout request failed:', error);
         } finally {

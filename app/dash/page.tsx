@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Clip } from '@/contexts/authContext';
 import { useRouter } from 'next/navigation';
+import { isAxiosError } from 'axios';
 import { useAuth } from '@/contexts/authContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { BsGithub, BsGoogle, BsDiscord } from '@vertisanpro/react-icons/bs';
 import { Label } from '@/components/ui/label';
 import {
     Dialog,
@@ -26,17 +28,24 @@ import {
 import { cn } from '@/lib/utils';
 import {
     AlertDialog,
+    AlertDialogClose,
     AlertDialogContent,
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-    AlertDialogClose,
 } from '@/components/ui/alert-dialog';
 import axios from 'axios';
 
 const API_URL = 'https://wayclip.com';
+
+const providerIcons: { [key: string]: React.ReactNode } = {
+    github: <BsGithub className='h-5 w-5' />,
+    google: <BsGoogle className='h-5 w-5' />,
+    discord: <BsDiscord className='h-5 w-5' />,
+    email: <span className='text-xl font-bold'>@</span>,
+};
 
 const pricingPlans = [
     {
@@ -99,6 +108,11 @@ const ClipsTable = ({
     onDelete: (id: string) => void;
     onCopy: (url: string) => void;
 }) => {
+    // Return early if there are no clips to prevent errors on clips[0]
+    if (!clips || clips.length === 0) {
+        return <p className='text-muted-foreground'>You haven&apos;t uploaded any clips yet.</p>;
+    }
+
     return (
         <Table>
             <TableHeader>
@@ -114,7 +128,7 @@ const ClipsTable = ({
                     const clipUrl = `${API_URL}/clip/${clip.id}`;
                     return (
                         <TableRow key={clip.id}>
-                            <TableCell className='font-medium truncate'>
+                            <TableCell className='font-medium truncate max-w-xs'>
                                 <a
                                     href={clipUrl}
                                     target='_blank'
@@ -122,7 +136,7 @@ const ClipsTable = ({
                                     className='hover:underline flex items-center gap-2'
                                 >
                                     {clip.file_name}
-                                    <ExternalLink className='size-4 text-muted-foreground' />
+                                    <ExternalLink className='size-4 text-muted-foreground flex-shrink-0' />
                                 </a>
                             </TableCell>
                             {'file_size' in clip && <TableCell>{formatBytes(clip.file_size)}</TableCell>}
@@ -152,12 +166,8 @@ const ClipsTable = ({
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
-                                            <AlertDialogClose>
-                                                <Button size='sm' variant='ghost'>
-                                                    Cancel
-                                                </Button>
-                                            </AlertDialogClose>
-                                            <Button size='sm' variant='destructive' onClick={() => onDelete(clip.id)}>
+                                            <AlertDialogClose>Cancel</AlertDialogClose>
+                                            <Button variant='destructive' onClick={() => onDelete(clip.id)}>
                                                 Delete
                                             </Button>
                                         </AlertDialogFooter>
@@ -208,7 +218,7 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
             );
             setRecoveryCodes(response.data.recovery_codes);
             toast.success('2FA enabled successfully!');
-            onSuccess();
+            // The onSuccess callback will close the dialog and refresh user data
         } catch (error) {
             toast.error('Invalid verification code. Please try again.');
             console.error('2FA verification failed:', error);
@@ -246,7 +256,10 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
                     className='w-full'
                 >
                     <Copy className='mr-2 h-4 w-4' />
-                    Copy Recovery Codes
+                    Copy Codes & Close
+                </Button>
+                <Button variant='outline' onClick={onSuccess} className='w-full'>
+                    Close
                 </Button>
             </div>
         );
@@ -261,8 +274,8 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
                         Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
                     </p>
                 </div>
-                <div className='flex justify-center'>
-                    <Image src={qrCodeUrl} alt='2FA QR Code' className='border rounded' />
+                <div className='flex justify-center p-4 bg-white rounded-lg'>
+                    {qrCodeUrl && <Image src={qrCodeUrl} alt='2FA QR Code' width={200} height={200} />}
                 </div>
                 <div className='space-y-2'>
                     <Label>Manual Entry Key (if needed)</Label>
@@ -335,23 +348,45 @@ const DashboardPage = () => {
         fetchClips();
     }, [isAuthenticated]);
 
+    const handleUnlinkProvider = async (provider: string) => {
+        if (userData?.connected_accounts && userData.connected_accounts.length <= 1) {
+            toast.error('You cannot remove your only authentication method.');
+            return;
+        }
+
+        try {
+            await axios.delete(`${API_URL}/api/oauth/unlink/${provider}`, { withCredentials: true });
+            toast.success(`${provider.charAt(0).toUpperCase() + provider.slice(1)} account unlinked successfully.`);
+            await refreshUser();
+        } catch (error) {
+            if (isAxiosError(error)) {
+                toast.error(error.response?.data?.message || `Failed to unlink ${provider} account.`);
+            } else {
+                toast.error('An unexpected error occurred.');
+            }
+            console.error(`Failed to unlink ${provider}:`, error);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        try {
+            await axios.delete(`${API_URL}/api/account`, { withCredentials: true });
+            toast.success('Your account has been scheduled for deletion.');
+            logout();
+        } catch (error) {
+            toast.error('Failed to delete account. Please try again.');
+            console.error('Account deletion failed:', error);
+        }
+    };
+
     const handleDeleteClip = async (clipId: string) => {
         try {
             await axios.delete(`${API_URL}/api/clip/${clipId}`, { withCredentials: true });
             setClips((prevClips) => prevClips.filter((clip) => clip.id !== clipId));
+            toast.success('Clip deleted successfully.');
         } catch (error) {
             console.error('Failed to delete clip:', error);
             toast.error('An error occurred while deleting the clip. Please try again.');
-        }
-    };
-
-    const handleRemoveConnection = async () => {
-        if (
-            window.confirm(
-                'Are you sure you want to remove your connection and delete your account? This action cannot be undone.',
-            )
-        ) {
-            alert('Account deletion functionality is not yet implemented on the backend.');
         }
     };
 
@@ -401,7 +436,6 @@ const DashboardPage = () => {
         const storageLimitGB = storageLimitBytes > 0 ? storageLimitBytes / (1024 * 1024 * 1024) : 0;
         const storageUsedPercentage = storageLimitBytes > 0 ? (storageUsedBytes / storageLimitBytes) * 100 : 0;
 
-        const connectionType = userData.github_id ? 'GitHub' : userData.email ? 'Email' : 'OAuth';
         const isEmailVerified = userData.email_verified_at !== null && userData.email_verified_at !== undefined;
 
         return (
@@ -425,19 +459,14 @@ const DashboardPage = () => {
                                     </CardHeader>
                                     <CardContent>
                                         <p className='text-4xl font-bold tracking-tight'>{userData.clip_count}</p>
-
                                         {clipsLoading ? (
                                             <p>Loading clips...</p>
-                                        ) : clips.length > 0 ? (
+                                        ) : (
                                             <ClipsTable
                                                 clips={clips}
                                                 onDelete={handleDeleteClip}
                                                 onCopy={handleCopyUrl}
                                             />
-                                        ) : (
-                                            <p className='text-muted-foreground'>
-                                                You haven&apos;t uploaded any clips yet.
-                                            </p>
                                         )}
                                     </CardContent>
                                 </Card>
@@ -447,9 +476,11 @@ const DashboardPage = () => {
                                 <Card className='flex flex-col'>
                                     <CardHeader>
                                         <CardTitle>Account Information</CardTitle>
-                                        <CardDescription>Your account details and connection status.</CardDescription>
+                                        <CardDescription>
+                                            Manage your account details and security settings.
+                                        </CardDescription>
                                     </CardHeader>
-                                    <CardContent className='space-y-4'>
+                                    <CardContent className='space-y-6'>
                                         <div className='flex items-center gap-4'>
                                             <Avatar className='h-12 w-12'>
                                                 <AvatarImage src={userData.avatar_url ?? ''} alt='Avatar' />
@@ -459,9 +490,6 @@ const DashboardPage = () => {
                                             </Avatar>
                                             <div>
                                                 <p className='font-semibold text-lg'>{userData.username}</p>
-                                                <p className='text-sm text-muted-foreground'>
-                                                    {connectionType} Account
-                                                </p>
                                             </div>
                                         </div>
 
@@ -477,24 +505,76 @@ const DashboardPage = () => {
                                             </div>
                                         )}
 
+                                        <div className='space-y-3'>
+                                            <Label>Connected Accounts</Label>
+                                            <p className='text-sm text-muted-foreground'>
+                                                These are the services you can use to sign in.
+                                            </p>
+                                            <div className='space-y-2'>
+                                                {userData.connected_accounts.map((provider) => (
+                                                    <div
+                                                        key={provider}
+                                                        className='flex items-center justify-between rounded-md border p-3'
+                                                    >
+                                                        <div className='flex items-center gap-3'>
+                                                            {providerIcons[provider]}
+                                                            <span className='font-medium capitalize'>{provider}</span>
+                                                        </div>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger>
+                                                                <Button
+                                                                    variant='ghost'
+                                                                    size='sm'
+                                                                    disabled={userData.connected_accounts.length <= 1}
+                                                                    className='text-xs'
+                                                                >
+                                                                    <Unplug className='mr-2 h-3 w-3' />
+                                                                    Unlink
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>
+                                                                        Unlink {provider}?
+                                                                    </AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        Are you sure? You will no longer be able to log
+                                                                        in using this {provider} account.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogClose>Cancel</AlertDialogClose>
+                                                                    <Button
+                                                                        onClick={() => handleUnlinkProvider(provider)}
+                                                                    >
+                                                                        Continue
+                                                                    </Button>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
                                         <div className='space-y-1'>
                                             <p className='text-sm font-medium'>Two-Factor Authentication</p>
                                             <div className='flex items-center gap-2'>
-                                                {userData.two_factor_enabled ? (
-                                                    <Badge variant='default' className='flex items-center gap-1'>
+                                                <Badge
+                                                    variant={userData.two_factor_enabled ? 'default' : 'secondary'}
+                                                    className='flex items-center gap-1'
+                                                >
+                                                    {userData.two_factor_enabled ? (
                                                         <ShieldCheck className='h-3 w-3' />
-                                                        Enabled
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge variant='secondary' className='flex items-center gap-1'>
+                                                    ) : (
                                                         <Shield className='h-3 w-3' />
-                                                        Disabled
-                                                    </Badge>
-                                                )}
+                                                    )}
+                                                    {userData.two_factor_enabled ? 'Enabled' : 'Disabled'}
+                                                </Badge>
                                             </div>
                                         </div>
                                     </CardContent>
-                                    <CardFooter className='mt-auto flex gap-3 border-t pt-6'>
+                                    <CardFooter className='mt-auto flex flex-wrap gap-2 border-t pt-6'>
                                         <Button variant='outline' onClick={logout}>
                                             <LogOut className='mr-2 size-4' />
                                             Sign Out
@@ -511,17 +591,36 @@ const DashboardPage = () => {
                                                     <DialogHeader>
                                                         <DialogTitle>Two-Factor Authentication</DialogTitle>
                                                         <DialogDescription>
-                                                            Secure your account with an additional authentication step.
+                                                            Secure your account by requiring a second verification step.
                                                         </DialogDescription>
                                                     </DialogHeader>
                                                     <TwoFactorSetup onSuccess={handle2FASuccess} />
                                                 </DialogContent>
                                             </Dialog>
                                         )}
-                                        <Button variant='destructive' onClick={handleRemoveConnection}>
-                                            <Unplug className='mr-2 size-4' />
-                                            Remove Connection
-                                        </Button>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger>
+                                                <Button variant='destructive'>
+                                                    <Trash2 className='mr-2 size-4' />
+                                                    Delete Account
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This action is irreversible. All your data, including your
+                                                        clips, will be permanently deleted. This cannot be undone.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogClose>Cancel</AlertDialogClose>
+                                                    <Button variant='destructive' onClick={handleDeleteAccount}>
+                                                        Yes, delete my account
+                                                    </Button>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </CardFooter>
                                 </Card>
 
@@ -537,10 +636,12 @@ const DashboardPage = () => {
                                                 {storageUsedGB.toFixed(2)} GB
                                             </p>
                                             <span className='text-muted-foreground'>
-                                                / {storageLimitGB.toFixed(0)} GB used
+                                                / {storageLimitGB > 0 ? `${storageLimitGB.toFixed(0)} GB` : '2 GB'} used
                                             </span>
                                             <span className='ml-auto text-3xl font-bold text-muted-foreground tracking-tight'>
-                                                {Math.round((storageUsedGB / storageLimitGB) * 100)}%
+                                                {storageLimitGB > 0
+                                                    ? `${Math.round((storageUsedGB / storageLimitGB) * 100)}%`
+                                                    : '0%'}
                                             </span>
                                         </div>
                                         <Progress
