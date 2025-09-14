@@ -82,11 +82,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
             await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
         } catch (error) {
-            console.error('Logout request failed:', error);
-        } finally {
-            setUser(null);
-            window.location.href = '/login';
+            console.error('Logout request failed, proceeding with client-side logout:', error);
         }
+        setUser(null);
+        window.location.href = '/login';
     };
 
     const value = {

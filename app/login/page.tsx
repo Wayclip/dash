@@ -111,7 +111,7 @@ const LoginClientComponent = () => {
                 },
             );
 
-            if (response.data.token) {
+            if (response.data.success) {
                 window.location.href = '/dash';
             }
         } catch (error) {
