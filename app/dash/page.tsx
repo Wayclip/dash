@@ -38,6 +38,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import axios from 'axios';
 
+const LoadingScreen = () => (
+    <div className='flex h-full min-h-[50vh] w-full items-center justify-center'>
+        <div className='h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent'></div>
+    </div>
+);
+
 const API_URL = 'https://wayclip.com';
 
 const providerIcons: { [key: string]: React.ReactNode } = {
@@ -148,15 +154,24 @@ const ClipsTable = ({
                                     size='icon'
                                     onClick={() => onCopy(clipUrl)}
                                     className='cursor-pointer'
+                                    aria-label='Copy clip URL'
                                 >
                                     <Copy className='size-4' />
                                 </Button>
                                 <AlertDialog>
-                                    <AlertDialogTrigger>
-                                        <Button variant='destructive' size='icon' className='cursor-pointer'>
-                                            <Trash2 className='size-4' />
-                                        </Button>
-                                    </AlertDialogTrigger>
+                                    <AlertDialogTrigger
+                                        render={(props) => (
+                                            <Button
+                                                {...props}
+                                                variant='destructive'
+                                                size='icon'
+                                                className='cursor-pointer'
+                                                aria-label='Delete clip'
+                                            >
+                                                <Trash2 className='size-4' />
+                                            </Button>
+                                        )}
+                                    />
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -165,8 +180,23 @@ const ClipsTable = ({
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
-                                            <AlertDialogClose>Cancel</AlertDialogClose>
-                                            <Button variant='destructive' onClick={() => onDelete(clip.id)}>
+                                            <AlertDialogClose
+                                                render={(props) => (
+                                                    <Button
+                                                        {...props}
+                                                        size='sm'
+                                                        variant='ghost'
+                                                        className='cursor-pointer'
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                )}
+                                            />
+                                            <Button
+                                                variant='destructive'
+                                                onClick={() => onDelete(clip.id)}
+                                                className='cursor-pointer'
+                                            >
                                                 Delete
                                             </Button>
                                         </AlertDialogFooter>
@@ -225,6 +255,12 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
         }
     };
 
+    const handleCopyAndClose = () => {
+        navigator.clipboard.writeText(recoveryCodes.join('\n'));
+        toast.success('Recovery codes copied to clipboard!');
+        onSuccess();
+    };
+
     if (recoveryCodes.length > 0) {
         return (
             <div className='space-y-4'>
@@ -246,18 +282,9 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
                         ))}
                     </div>
                 </div>
-                <Button
-                    onClick={() => {
-                        navigator.clipboard.writeText(recoveryCodes.join('\n'));
-                        toast.success('Recovery codes copied to clipboard!');
-                    }}
-                    className='w-full'
-                >
+                <Button onClick={handleCopyAndClose} className='w-full cursor-pointer'>
                     <Copy className='mr-2 h-4 w-4' />
                     Copy Codes & Close
-                </Button>
-                <Button variant='outline' onClick={onSuccess} className='w-full'>
-                    Close
                 </Button>
             </div>
         );
@@ -291,7 +318,11 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
                         className='text-center text-lg tracking-widest'
                     />
                 </div>
-                <Button onClick={verify2FA} disabled={isLoading || verificationCode.length !== 6} className='w-full'>
+                <Button
+                    onClick={verify2FA}
+                    disabled={isLoading || verificationCode.length !== 6}
+                    className='w-full cursor-pointer'
+                >
                     {isLoading ? 'Verifying...' : 'Enable 2FA'}
                 </Button>
             </div>
@@ -337,6 +368,7 @@ const DashboardPage = () => {
                     setClips(response.data);
                 } catch (error) {
                     console.error('Failed to fetch clips:', error);
+                    toast.error('Could not load your clips. Please try refreshing the page.');
                 } finally {
                     setClipsLoading(false);
                 }
@@ -382,6 +414,7 @@ const DashboardPage = () => {
             await axios.delete(`${API_URL}/api/clip/${clipId}`, { withCredentials: true });
             setClips((prevClips) => prevClips.filter((clip) => clip.id !== clipId));
             toast.success('Clip deleted successfully.');
+            await refreshUser();
         } catch (error) {
             console.error('Failed to delete clip:', error);
             toast.error('An error occurred while deleting the clip. Please try again.');
@@ -418,11 +451,7 @@ const DashboardPage = () => {
     };
 
     if (isLoading) {
-        return (
-            <div className='flex items-center justify-center min-h-screen'>
-                <p>Loading...</p>
-            </div>
-        );
+        return <LoadingScreen />;
     }
 
     if (isAuthenticated && userData) {
@@ -437,7 +466,7 @@ const DashboardPage = () => {
         const isEmailVerified = userData.email_verified_at !== null && userData.email_verified_at !== undefined;
 
         return (
-            <div className='flex min-h-screen w-full flex-col bg-background/40 pt-14 sm:pt-20'>
+            <div className='flex w-full flex-col bg-background/40 pt-14 sm:pt-20'>
                 <main className='flex w-full flex-1 flex-col gap-8 p-4 sm:px-6 sm:py-0 max-w-6xl mx-auto'>
                     <header className='sm:py-4'>
                         <h1 className='text-2xl font-semibold'>Dashboard</h1>
@@ -456,7 +485,7 @@ const DashboardPage = () => {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className='space-y-6'>
-                                    <div className='flex flex-row gap-12'>
+                                    <div className='flex flex-col sm:flex-row gap-6 sm:gap-12'>
                                         <div className='flex items-center gap-4'>
                                             <Avatar className='h-12 w-12'>
                                                 <AvatarImage src={userData.avatar_url ?? ''} alt='Avatar' />
@@ -515,17 +544,20 @@ const DashboardPage = () => {
                                                         <span className='font-medium capitalize'>{provider}</span>
                                                     </div>
                                                     <AlertDialog>
-                                                        <AlertDialogTrigger>
-                                                            <Button
-                                                                variant='ghost'
-                                                                size='sm'
-                                                                disabled={userData.connected_accounts.length <= 1}
-                                                                className='text-xs cursor-pointer'
-                                                            >
-                                                                <Unplug className='mr-2 h-3 w-3' />
-                                                                Unlink
-                                                            </Button>
-                                                        </AlertDialogTrigger>
+                                                        <AlertDialogTrigger
+                                                            render={(props) => (
+                                                                <Button
+                                                                    {...props}
+                                                                    variant='ghost'
+                                                                    size='sm'
+                                                                    disabled={userData.connected_accounts.length <= 1}
+                                                                    className='text-xs cursor-pointer'
+                                                                >
+                                                                    <Unplug className='mr-2 h-3 w-3' />
+                                                                    Unlink
+                                                                </Button>
+                                                            )}
+                                                        />
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader>
                                                                 <AlertDialogTitle>Unlink {provider}?</AlertDialogTitle>
@@ -535,8 +567,22 @@ const DashboardPage = () => {
                                                                 </AlertDialogDescription>
                                                             </AlertDialogHeader>
                                                             <AlertDialogFooter>
-                                                                <AlertDialogClose>Cancel</AlertDialogClose>
-                                                                <Button onClick={() => handleUnlinkProvider(provider)}>
+                                                                <AlertDialogClose
+                                                                    render={(props) => (
+                                                                        <Button
+                                                                            {...props}
+                                                                            size='sm'
+                                                                            variant='ghost'
+                                                                            className='cursor-pointer'
+                                                                        >
+                                                                            Cancel
+                                                                        </Button>
+                                                                    )}
+                                                                />
+                                                                <Button
+                                                                    onClick={() => handleUnlinkProvider(provider)}
+                                                                    className='cursor-pointer'
+                                                                >
                                                                     Continue
                                                                 </Button>
                                                             </AlertDialogFooter>
@@ -572,12 +618,14 @@ const DashboardPage = () => {
                                         </Dialog>
                                     )}
                                     <AlertDialog>
-                                        <AlertDialogTrigger>
-                                            <Button variant='destructive' className='cursor-pointer'>
-                                                <Trash2 className='mr-2 size-4' />
-                                                Delete Account
-                                            </Button>
-                                        </AlertDialogTrigger>
+                                        <AlertDialogTrigger
+                                            render={(props) => (
+                                                <Button {...props} variant='destructive' className='cursor-pointer'>
+                                                    <Trash2 className='mr-2 size-4' />
+                                                    Delete Account
+                                                </Button>
+                                            )}
+                                        />
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -587,8 +635,23 @@ const DashboardPage = () => {
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogClose>Cancel</AlertDialogClose>
-                                                <Button variant='destructive' onClick={handleDeleteAccount}>
+                                                <AlertDialogClose
+                                                    render={(props) => (
+                                                        <Button
+                                                            {...props}
+                                                            size='sm'
+                                                            variant='ghost'
+                                                            className='cursor-pointer'
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    )}
+                                                />
+                                                <Button
+                                                    variant='destructive'
+                                                    onClick={handleDeleteAccount}
+                                                    className='cursor-pointer'
+                                                >
                                                     Yes, delete my account
                                                 </Button>
                                             </AlertDialogFooter>
@@ -633,7 +696,9 @@ const DashboardPage = () => {
                                 <CardContent>
                                     <p className='text-4xl font-bold tracking-tight'>{userData.clip_count}</p>
                                     {clipsLoading ? (
-                                        <p>Loading clips...</p>
+                                        <div className='flex justify-center py-8'>
+                                            <div className='h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent' />
+                                        </div>
                                     ) : (
                                         <ClipsTable clips={clips} onDelete={handleDeleteClip} onCopy={handleCopyUrl} />
                                     )}
@@ -683,7 +748,7 @@ const DashboardPage = () => {
                                     </CardContent>
                                     <CardFooter>
                                         <Button
-                                            className='w-full'
+                                            className='w-full cursor-pointer'
                                             disabled={
                                                 plan.tierId === userData.tier || isUpgrading || plan.tierId === 'free'
                                             }

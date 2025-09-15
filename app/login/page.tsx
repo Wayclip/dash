@@ -1,8 +1,8 @@
 'use client';
 
 import { Suspense, useEffect, useState, FormEvent } from 'react';
-import { Github, KeyRound } from 'lucide-react';
-import { BsDiscord, BsGoogle } from '@vertisanpro/react-icons/bs';
+import { KeyRound } from 'lucide-react';
+import { BsDiscord, BsGoogle, BsGithub } from '@vertisanpro/react-icons/bs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import axios, { isAxiosError } from 'axios';
 import { toast } from 'sonner';
 
+const LoadingScreen = () => (
+    <div className='flex h-screen w-full items-center justify-center bg-background/40'>
+        <div className='h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent'></div>
+    </div>
+);
+
 const API_URL = 'https://wayclip.com';
 
 const LoginClientComponent = () => {
@@ -20,6 +26,7 @@ const LoginClientComponent = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
 
+    const [activeTab, setActiveTab] = useState('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,13 +84,14 @@ const LoginClientComponent = () => {
             }
         } catch (error) {
             if (isAxiosError(error)) {
-                const errorMessage = error.response?.data || 'Login failed. Please check your email and password.';
+                const errorMessage = error.response?.data || 'Login failed. Please check your credentials.';
                 if (typeof errorMessage === 'string' && errorMessage.includes('verify your email')) {
-                    toast.error('Please verify your email address before logging in.');
-                    const resend = confirm('Would you like to resend the verification email?');
-                    if (resend) {
-                        handleResendVerification(email);
-                    }
+                    toast.error('Please verify your email address before logging in.', {
+                        action: {
+                            label: 'Resend Email',
+                            onClick: () => handleResendVerification(email),
+                        },
+                    });
                 } else {
                     toast.error(errorMessage);
                 }
@@ -144,9 +152,9 @@ const LoginClientComponent = () => {
             });
 
             toast.success('Registration successful! Please check your email to verify your account.');
-            const loginTab = document.querySelector('[data-value="login"]') as HTMLElement;
-            loginTab?.click();
+            setActiveTab('login');
         } catch (error) {
+            console.error(error);
             if (isAxiosError(error)) {
                 const errorMessage = error.response?.data || 'Registration failed. Please try again.';
                 toast.error(errorMessage);
@@ -160,9 +168,13 @@ const LoginClientComponent = () => {
     };
 
     const handleResendVerification = async (email: string) => {
+        if (!email) {
+            toast.error('Please enter your email address in the login form first.');
+            return;
+        }
         try {
             await axios.post(`${API_URL}/auth/resend-verification`, { email });
-            toast.success('Verification email sent (if account exists).');
+            toast.success('Verification email sent (if an account with that email exists).');
         } catch (error) {
             console.error(error);
             toast.error('Failed to send verification email.');
@@ -170,7 +182,7 @@ const LoginClientComponent = () => {
     };
 
     if (isLoading || isAuthenticated) {
-        return <div className='flex items-center justify-center min-h-screen'>Loading...</div>;
+        return <LoadingScreen />;
     }
 
     if (show2FA) {
@@ -226,11 +238,9 @@ const LoginClientComponent = () => {
                     <CardDescription>Sign in to your account or create a new one.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Tabs defaultValue='login' className='w-full'>
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
                         <TabsList className='grid w-full grid-cols-2'>
-                            <TabsTrigger value='login' data-value='login'>
-                                Login
-                            </TabsTrigger>
+                            <TabsTrigger value='login'>Login</TabsTrigger>
                             <TabsTrigger value='register'>Register</TabsTrigger>
                         </TabsList>
 
@@ -241,7 +251,7 @@ const LoginClientComponent = () => {
                                     className='w-full'
                                     disabled={isLoading}
                                 >
-                                    <Github className='mr-2 h-4 w-4' /> Continue with GitHub
+                                    <BsGithub className='mr-2 h-4 w-4' /> Continue with GitHub
                                 </Button>
                                 <Button
                                     onClick={() => handleOAuthLogin('google')}
@@ -298,14 +308,14 @@ const LoginClientComponent = () => {
                             </div>
                         </TabsContent>
 
-                        <TabsContent value='register' className='space-y-4'>
+                        <TabsContent value='register' className='space-y-4 mt-4'>
                             <div className='grid gap-4'>
                                 <Button
                                     onClick={() => handleOAuthLogin('github')}
                                     className='w-full'
                                     disabled={isLoading}
                                 >
-                                    <Github className='mr-2 h-4 w-4' /> Continue with GitHub
+                                    <BsGithub className='mr-2 h-4 w-4' /> Continue with GitHub
                                 </Button>
                                 <Button
                                     onClick={() => handleOAuthLogin('google')}
@@ -394,7 +404,7 @@ const LoginClientComponent = () => {
 
 const LoginPage = () => {
     return (
-        <Suspense fallback={<div className='flex items-center justify-center min-h-screen'>Loading...</div>}>
+        <Suspense fallback={<LoadingScreen />}>
             <LoginClientComponent />
         </Suspense>
     );

@@ -1,7 +1,8 @@
-import { Github, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { ThemeToggle } from './toggle';
+import { BsGithub } from '@vertisanpro/react-icons/bs';
 
 export const Navbar = () => {
     return (
@@ -47,7 +48,7 @@ export const Navbar = () => {
                             rel='noopener noreferrer'
                             aria-label='GitHub'
                         >
-                            <Github className='size-5' />
+                            <BsGithub className='size-5' />
                         </a>
                     </Button>
                 </div>

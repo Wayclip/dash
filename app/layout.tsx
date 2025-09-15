@@ -26,7 +26,7 @@ export default function RootLayout({
                 <AuthProvider>
                     <ThemeProvider attribute='class' defaultTheme='system' enableSystem disableTransitionOnChange>
                         <Navbar />
-                        {children}
+                        <main className='flex-1 w-full'>{children}</main>
 
                         <footer className='border-t py-12 px-4'>
                             <div className='container mx-auto max-w-6xl'>

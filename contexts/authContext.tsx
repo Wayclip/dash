@@ -51,7 +51,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
         try {
-            console.log('Fetching /me');
             const response = await axios.get(`${API_URL}/api/me`, {
                 withCredentials: true,
             });
@@ -62,7 +61,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setUser(null);
             }
         } catch (error) {
-            console.error('Failed to fetch user:', error);
             setUser(null);
         } finally {
             setIsLoading(false);
@@ -74,18 +72,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     const refreshUser = async () => {
+        setIsLoading(true);
         await fetchUser();
     };
 
     const logout = async () => {
-        console.log('Triggered logout');
         try {
             await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
         } catch (error) {
             console.error('Logout request failed, proceeding with client-side logout:', error);
+        } finally {
+            setUser(null);
+            window.location.href = '/login';
         }
-        setUser(null);
-        window.location.href = '/login';
     };
 
     const value = {
