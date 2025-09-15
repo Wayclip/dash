@@ -352,6 +352,7 @@ const DashboardPage = () => {
     const [clipsLoading, setClipsLoading] = useState(true);
     const [isUpgrading, setIsUpgrading] = useState(false);
     const [show2FADialog, setShow2FADialog] = useState(false);
+    const [isManagingSubscription, setIsManagingSubscription] = useState(false);
 
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
@@ -437,6 +438,35 @@ const DashboardPage = () => {
             toast.error('An error occurred while setting up the payment process. Please try again.');
         } finally {
             setIsUpgrading(false);
+        }
+    };
+
+    const handleManageSubscription = async () => {
+        setIsManagingSubscription(true);
+        try {
+            const response = await axios.post(`${API_URL}/api/customer-portal`, {}, { withCredentials: true });
+            const { url } = response.data;
+            if (url) {
+                window.location.href = url;
+            } else {
+                throw new Error('No portal URL received from server.');
+            }
+        } catch (error) {
+            toast.error('Could not open the billing portal. Please try again.');
+            console.error('Failed to create customer portal session:', error);
+        } finally {
+            setIsManagingSubscription(false);
+        }
+    };
+
+    const handleCancelSubscription = async () => {
+        try {
+            await axios.delete(`${API_URL}/api/subscription`, { withCredentials: true });
+            toast.success('Your subscription is scheduled for cancellation at the end of the billing period.');
+            await refreshUser();
+        } catch (error) {
+            toast.error('Failed to cancel subscription. Please try again or use the billing portal.');
+            console.error('Subscription cancellation failed:', error);
         }
     };
 
@@ -708,13 +738,81 @@ const DashboardPage = () => {
                     </div>
 
                     <div className='flex flex-col gap-4 my-8'>
-                        <header>
-                            <h2 className='text-xl font-semibold'>Manage Subscription</h2>
-                            <p className='text-muted-foreground'>
-                                You are currently on the{' '}
-                                <span className='font-semibold text-primary'>{userTierPlan.name}</span> plan.
-                            </p>
-                        </header>
+                        {userData.tier !== 'free' ? (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Your Subscription</CardTitle>
+                                    <CardDescription>
+                                        You are currently on the{' '}
+                                        <span className='font-semibold text-primary'>{userTierPlan.name}</span> plan.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className='text-sm text-muted-foreground'>
+                                        Manage your billing information, switch plans, or cancel your subscription at
+                                        any time through our secure billing portal.
+                                    </p>
+                                </CardContent>
+                                <CardFooter className='flex flex-wrap gap-2'>
+                                    <Button onClick={handleManageSubscription} disabled={isManagingSubscription}>
+                                        <ExternalLink className='mr-2 size-4' />
+                                        {isManagingSubscription ? 'Redirecting...' : 'Manage Billing'}
+                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger
+                                            render={(props) => (
+                                                <Button
+                                                    {...props}
+                                                    variant='ghost'
+                                                    className='text-destructive hover:text-destructive'
+                                                >
+                                                    Cancel Subscription
+                                                </Button>
+                                            )}
+                                        />
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure you want to cancel?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    Your subscription will remain active until the end of the current
+                                                    billing period.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogClose
+                                                    render={(props) => (
+                                                        <Button
+                                                            {...props}
+                                                            size='sm'
+                                                            variant='ghost'
+                                                            className='cursor-pointer'
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    )}
+                                                />
+                                                <Button
+                                                    variant={'destructive'}
+                                                    onClick={handleCancelSubscription}
+                                                    className='cursor-pointer'
+                                                >
+                                                    Yes, Cancel Subscription
+                                                </Button>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </CardFooter>
+                            </Card>
+                        ) : (
+                            <header>
+                                <h2 className='text-xl font-semibold'>Manage Subscription</h2>
+                                <p className='text-muted-foreground'>
+                                    You are currently on the{' '}
+                                    <span className='font-semibold text-primary'>{userTierPlan.name}</span> plan.
+                                </p>
+                            </header>
+                        )}
+
                         <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
                             {pricingPlans.map((plan) => (
                                 <Card
@@ -747,19 +845,31 @@ const DashboardPage = () => {
                                         </ul>
                                     </CardContent>
                                     <CardFooter>
-                                        <Button
-                                            className='w-full cursor-pointer'
-                                            disabled={
-                                                plan.tierId === userData.tier || isUpgrading || plan.tierId === 'free'
-                                            }
-                                            onClick={() => handleUpgrade(plan.apiId)}
-                                        >
-                                            {plan.tierId === userData.tier
-                                                ? 'Current Plan'
-                                                : isUpgrading
-                                                  ? 'Processing...'
-                                                  : 'Upgrade'}
-                                        </Button>
+                                        {userData.tier === 'free' ? (
+                                            <Button
+                                                className='w-full cursor-pointer'
+                                                disabled={
+                                                    plan.tierId === userData.tier ||
+                                                    isUpgrading ||
+                                                    plan.tierId === 'free'
+                                                }
+                                                onClick={() => handleUpgrade(plan.apiId)}
+                                            >
+                                                {plan.tierId === userData.tier
+                                                    ? 'Current Plan'
+                                                    : isUpgrading
+                                                      ? 'Processing...'
+                                                      : 'Upgrade'}
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                className='w-full'
+                                                disabled={plan.tierId === userData.tier}
+                                                onClick={handleManageSubscription}
+                                            >
+                                                {plan.tierId === userData.tier ? 'Current Plan' : 'Manage Plan'}
+                                            </Button>
+                                        )}
                                     </CardFooter>
                                 </Card>
                             ))}
