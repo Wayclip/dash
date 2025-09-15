@@ -34,7 +34,9 @@ export const PaymentVerificationClient = () => {
 
         const verifyStripeSession = async () => {
             try {
-                const response = await axios.get(`/api/checkout/verify-session?session_id=${sessionId}`);
+                const response = await axios.get(
+                    `https://wayclip.com/api/checkout/verify-session?session_id=${sessionId}`,
+                );
 
                 if (response.data.status === 'paid') {
                     setStatus('success');

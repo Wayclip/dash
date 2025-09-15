@@ -19,7 +19,7 @@ const PaymentCancelPage = () => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Link href='/dashboard'>
+                    <Link href='/dash'>
                         <Button className='w-full'>Return to Dashboard</Button>
                     </Link>
                 </CardContent>

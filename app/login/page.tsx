@@ -39,6 +39,9 @@ const LoginClientComponent = () => {
     const [twoFAToken, setTwoFAToken] = useState('');
     const [twoFACode, setTwoFACode] = useState('');
     const [is2FASubmitting, setIs2FASubmitting] = useState(false);
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+    const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+    const [isForgotPasswordSubmitting, setIsForgotPasswordSubmitting] = useState(false);
 
     useEffect(() => {
         if (!isLoading && isAuthenticated) {
@@ -181,6 +184,23 @@ const LoginClientComponent = () => {
         }
     };
 
+    const handleForgotPassword = async (e: FormEvent) => {
+        e.preventDefault();
+        setIsForgotPasswordSubmitting(true);
+        try {
+            const response = await axios.post(`${API_URL}/auth/forgot-password`, {
+                email: forgotPasswordEmail,
+            });
+            toast.success(response.data.message);
+            setShowForgotPassword(false);
+        } catch (error) {
+            toast.error('Failed to send password reset email. Please try again.');
+            console.error('Forgot password failed:', error);
+        } finally {
+            setIsForgotPasswordSubmitting(false);
+        }
+    };
+
     if (isLoading || isAuthenticated) {
         return <LoadingScreen />;
     }
@@ -194,7 +214,9 @@ const LoginClientComponent = () => {
                             <KeyRound className='h-6 w-6' />
                             Two-Factor Authentication
                         </CardTitle>
-                        <CardDescription>Enter the code from your authenticator app</CardDescription>
+                        <CardDescription>
+                            Enter the code from your authenticator app or a recovery code.
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handle2FALogin} className='grid gap-4'>
@@ -203,12 +225,10 @@ const LoginClientComponent = () => {
                                 <Input
                                     id='twofa-code'
                                     type='text'
-                                    placeholder='000000'
-                                    maxLength={6}
-                                    pattern='[0-9]{6}'
+                                    placeholder='000000 or recovery code'
                                     required
                                     value={twoFACode}
-                                    onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    onChange={(e) => setTwoFACode(e.target.value)}
                                     className='text-center text-lg tracking-widest'
                                 />
                             </div>
@@ -220,6 +240,44 @@ const LoginClientComponent = () => {
                                 variant='outline'
                                 className='w-full'
                                 onClick={() => setShow2FA(false)}
+                            >
+                                Back to Login
+                            </Button>
+                        </form>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+    if (showForgotPassword) {
+        return (
+            <div className='flex items-center justify-center min-h-screen bg-background/40'>
+                <Card className='w-full max-w-sm'>
+                    <CardHeader className='text-center'>
+                        <CardTitle className='text-2xl'>Forgot Password</CardTitle>
+                        <CardDescription>Enter your email address to receive a password reset link.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleForgotPassword} className='grid gap-4'>
+                            <div className='grid gap-2'>
+                                <Label htmlFor='forgot-password-email'>Email</Label>
+                                <Input
+                                    id='forgot-password-email'
+                                    type='email'
+                                    placeholder='me@example.com'
+                                    required
+                                    value={forgotPasswordEmail}
+                                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                                />
+                            </div>
+                            <Button type='submit' className='w-full' disabled={isForgotPasswordSubmitting}>
+                                {isForgotPasswordSubmitting ? 'Sending...' : 'Send Reset Link'}
+                            </Button>
+                            <Button
+                                type='button'
+                                variant='outline'
+                                className='w-full'
+                                onClick={() => setShowForgotPassword(false)}
                             >
                                 Back to Login
                             </Button>
@@ -292,7 +350,17 @@ const LoginClientComponent = () => {
                                         />
                                     </div>
                                     <div className='grid gap-2'>
-                                        <Label htmlFor='password'>Password</Label>
+                                        <div className='flex items-center'>
+                                            <Label htmlFor='password'>Password</Label>
+                                            <Button
+                                                type='button'
+                                                variant='link'
+                                                className='ml-auto h-auto p-0 text-sm'
+                                                onClick={() => setShowForgotPassword(true)}
+                                            >
+                                                Forgot password?
+                                            </Button>
+                                        </div>
                                         <Input
                                             id='password'
                                             type='password'

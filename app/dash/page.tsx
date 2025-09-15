@@ -2,8 +2,10 @@
 
 import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug, Shield, ShieldCheck, Key } from 'lucide-react';
 import { toast } from 'sonner';
+import { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { RefreshCcw } from 'lucide-react';
 import { Clip } from '@/contexts/authContext';
 import { useRouter } from 'next/navigation';
 import { isAxiosError } from 'axios';
@@ -211,6 +213,44 @@ const ClipsTable = ({
     );
 };
 
+const ResetPasswordDialog = ({ onFinished }: { onFinished: () => void }) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [email, setEmail] = useState('');
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            const response = await axios.post(`${API_URL}/auth/forgot-password`, { email });
+            toast.success(response.data.message);
+            onFinished();
+        } catch (error) {
+            toast.error('Failed to send password reset email.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className='grid gap-4'>
+            <div className='grid gap-2'>
+                <Label htmlFor='reset-email'>Email</Label>
+                <Input
+                    id='reset-email'
+                    type='email'
+                    placeholder='me@example.com'
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                />
+            </div>
+            <Button type='submit' className='w-full' disabled={isSubmitting}>
+                {isSubmitting ? 'Sending...' : 'Send Password Reset Link'}
+            </Button>
+        </form>
+    );
+};
+
 const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
     const [step, setStep] = useState<'setup' | 'verify'>('setup');
     const [secret, setSecret] = useState('');
@@ -352,6 +392,7 @@ const DashboardPage = () => {
     const [clipsLoading, setClipsLoading] = useState(true);
     const [isUpgrading, setIsUpgrading] = useState(false);
     const [show2FADialog, setShow2FADialog] = useState(false);
+    const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false);
     const [isManagingSubscription, setIsManagingSubscription] = useState(false);
 
     useEffect(() => {
@@ -644,6 +685,30 @@ const DashboardPage = () => {
                                                     </DialogDescription>
                                                 </DialogHeader>
                                                 <TwoFactorSetup onSuccess={handle2FASuccess} />
+                                            </DialogContent>
+                                        </Dialog>
+                                    )}
+                                    {userData.connected_accounts.includes('email') && (
+                                        <Dialog
+                                            open={showResetPasswordDialog}
+                                            onOpenChange={setShowResetPasswordDialog}
+                                        >
+                                            <DialogTrigger asChild>
+                                                <Button variant='outline' className='cursor-pointer'>
+                                                    <RefreshCcw className='mr-2 size-4' />
+                                                    Reset Password
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className='sm:max-w-md'>
+                                                <DialogHeader>
+                                                    <DialogTitle>Reset Your Password</DialogTitle>
+                                                    <DialogDescription>
+                                                        Enter your email to receive a password reset link.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <ResetPasswordDialog
+                                                    onFinished={() => setShowResetPasswordDialog(false)}
+                                                />
                                             </DialogContent>
                                         </Dialog>
                                     )}
