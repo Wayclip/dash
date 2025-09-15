@@ -1,5 +1,6 @@
 'use client';
 
+import axios from 'axios';
 import { useAuth } from '@/contexts/authContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -21,7 +22,7 @@ export const PaymentVerificationClient = () => {
     }, [user, initialTier]);
 
     useEffect(() => {
-        if (isLoading || !user || !initialTier) {
+        if (isLoading || !user) {
             return;
         }
 
@@ -31,21 +32,29 @@ export const PaymentVerificationClient = () => {
             return;
         }
 
-        const interval = setInterval(async () => {
-            await refreshUser();
+        const verifyPayment = async () => {
+            try {
+                const response = await axios.get(`/api/checkout/verify-session?session_id=${sessionId}`);
 
-            if (user.tier !== initialTier) {
-                setStatus('success');
-                clearInterval(interval);
-
-                setTimeout(() => {
-                    router.replace('/dash');
-                }, 2000);
+                if (response.data.status === 'paid') {
+                    setStatus('success');
+                    await refreshUser();
+                    setTimeout(() => {
+                        router.replace('/dash');
+                    }, 2000);
+                } else if (response.data.status === 'open') {
+                    setTimeout(verifyPayment, 3000);
+                } else {
+                    setStatus('error');
+                }
+            } catch (error) {
+                console.error('Verification failed:', error);
+                setStatus('error');
             }
-        }, 2000);
+        };
 
-        return () => clearInterval(interval);
-    }, [isLoading, user, initialTier, searchParams, router, refreshUser]);
+        verifyPayment();
+    }, [isLoading, user, searchParams, router, refreshUser]);
 
     const renderContent = () => {
         switch (status) {
