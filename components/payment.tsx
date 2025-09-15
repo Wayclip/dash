@@ -57,7 +57,6 @@ export const PaymentVerificationClient = () => {
             return;
         }
 
-        let pollInterval: NodeJS.Timeout;
         let attempts = 0;
         const maxAttempts = 5;
 
@@ -79,7 +78,7 @@ export const PaymentVerificationClient = () => {
         };
 
         pollForUpdate();
-        pollInterval = setInterval(pollForUpdate, 2000);
+        const pollInterval = setInterval(pollForUpdate, 2000);
 
         return () => clearInterval(pollInterval);
     }, [status, initialTier, refreshUser, router, user]);
