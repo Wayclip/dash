@@ -1,0 +1,93 @@
+'use client';
+
+import { useAuth } from '@/contexts/authContext';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { SubscriptionTier } from '@/contexts/authContext';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+export const PaymentVerificationClient = () => {
+    const { user, refreshUser, isLoading } = useAuth();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
+    const [initialTier, setInitialTier] = useState<SubscriptionTier | null>(null);
+
+    useEffect(() => {
+        if (user && !initialTier) {
+            setInitialTier(user.tier);
+        }
+    }, [user, initialTier]);
+
+    useEffect(() => {
+        if (isLoading || !user || !initialTier) {
+            return;
+        }
+
+        const sessionId = searchParams.get('session_id');
+        if (!sessionId) {
+            setStatus('error');
+            return;
+        }
+
+        const interval = setInterval(async () => {
+            await refreshUser();
+
+            if (user.tier !== initialTier) {
+                setStatus('success');
+                clearInterval(interval);
+
+                setTimeout(() => {
+                    router.replace('/dash');
+                }, 2000);
+            }
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, [isLoading, user, initialTier, searchParams, router, refreshUser]);
+
+    const renderContent = () => {
+        switch (status) {
+            case 'success':
+                return (
+                    <>
+                        <CheckCircle2 className='h-16 w-16 text-green-500' />
+                        <CardTitle className='mt-4 text-2xl'>Payment Successful!</CardTitle>
+                        <CardDescription>Your subscription is active. Redirecting to your dashboard...</CardDescription>
+                    </>
+                );
+            case 'error':
+                return (
+                    <>
+                        <XCircle className='h-16 w-16 text-destructive' />
+                        <CardTitle className='mt-4 text-2xl'>Verification Failed</CardTitle>
+                        <CardDescription>
+                            Invalid session. Please check your account or contact support.
+                        </CardDescription>
+                    </>
+                );
+            case 'verifying':
+            default:
+                return (
+                    <>
+                        <Loader2 className='h-16 w-16 animate-spin text-primary' />
+                        <CardTitle className='mt-4 text-2xl'>Verifying Payment</CardTitle>
+                        <CardDescription>
+                            Please wait while we confirm your subscription. This may take a moment.
+                        </CardDescription>
+                    </>
+                );
+        }
+    };
+
+    return (
+        <div className='flex min-h-screen w-full items-center justify-center bg-muted/40'>
+            <Card className='w-full max-w-md'>
+                <CardHeader className='text-center'>
+                    <div className='flex flex-col items-center justify-center space-y-4 p-6'>{renderContent()}</div>
+                </CardHeader>
+            </Card>
+        </div>
+    );
+};

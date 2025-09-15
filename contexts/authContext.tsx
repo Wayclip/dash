@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import axios from 'axios';
 
 type CredentialProvider = 'email' | 'github' | 'google' | 'discord';
+export type SubscriptionTier = 'free' | 'tier1' | 'tier2' | 'tier3';
 
 interface UserProfile {
     id: string;
