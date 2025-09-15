@@ -13,16 +13,16 @@ export const PaymentVerificationClient = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
-    const [initialTier, setInitialTier] = useState<SubscriptionTier | null>(null);
+    const [initialTier, setInitialTier] = useState<SubscriptionTier | undefined>(undefined);
 
     useEffect(() => {
-        if (user && !initialTier) {
+        if (user && initialTier === undefined) {
             setInitialTier(user.tier);
         }
     }, [user, initialTier]);
 
     useEffect(() => {
-        if (isLoading || !user) {
+        if (isLoading || !user || initialTier === undefined) {
             return;
         }
 
@@ -32,18 +32,14 @@ export const PaymentVerificationClient = () => {
             return;
         }
 
-        const verifyPayment = async () => {
+        const verifyStripeSession = async () => {
             try {
                 const response = await axios.get(`/api/checkout/verify-session?session_id=${sessionId}`);
 
                 if (response.data.status === 'paid') {
                     setStatus('success');
-                    await refreshUser();
-                    setTimeout(() => {
-                        router.replace('/dash');
-                    }, 2000);
                 } else if (response.data.status === 'open') {
-                    setTimeout(verifyPayment, 3000);
+                    setTimeout(verifyStripeSession, 3000);
                 } else {
                     setStatus('error');
                 }
@@ -53,8 +49,40 @@ export const PaymentVerificationClient = () => {
             }
         };
 
-        verifyPayment();
-    }, [isLoading, user, searchParams, router, refreshUser]);
+        verifyStripeSession();
+    }, [isLoading, user, initialTier, searchParams]);
+
+    useEffect(() => {
+        if (status !== 'success' || initialTier === undefined) {
+            return;
+        }
+
+        let pollInterval: NodeJS.Timeout;
+        let attempts = 0;
+        const maxAttempts = 5;
+
+        const pollForUpdate = async () => {
+            await refreshUser();
+            attempts++;
+
+            if (user && user.tier !== initialTier) {
+                clearInterval(pollInterval);
+                setTimeout(() => {
+                    router.replace('/dash');
+                }, 2000);
+            } else if (attempts >= maxAttempts) {
+                clearInterval(pollInterval);
+                setTimeout(() => {
+                    router.replace('/dash');
+                }, 2000);
+            }
+        };
+
+        pollForUpdate();
+        pollInterval = setInterval(pollForUpdate, 2000);
+
+        return () => clearInterval(pollInterval);
+    }, [status, initialTier, refreshUser, router, user]);
 
     const renderContent = () => {
         switch (status) {
@@ -63,7 +91,9 @@ export const PaymentVerificationClient = () => {
                     <>
                         <CheckCircle2 className='h-16 w-16 text-green-500' />
                         <CardTitle className='mt-4 text-2xl'>Payment Successful!</CardTitle>
-                        <CardDescription>Your subscription is active. Redirecting to your dashboard...</CardDescription>
+                        <CardDescription>
+                            Your subscription is active. Finalizing and redirecting to your dashboard...
+                        </CardDescription>
                     </>
                 );
             case 'error':
