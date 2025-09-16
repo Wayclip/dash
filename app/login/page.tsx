@@ -72,9 +72,14 @@ const LoginClientComponent = () => {
     const handleErrorToast = (error: unknown, defaultMessage: string) => {
         if (isAxiosError(error) && error.response?.data) {
             const serverMessage = error.response.data;
+            // Handle cases where the response body is a string or an object with a 'message' property
             if (typeof serverMessage === 'string' && serverMessage.length > 0) {
                 toast.error(serverMessage);
-            } else if (typeof serverMessage.message === 'string' && serverMessage.message.length > 0) {
+            } else if (
+                serverMessage.message &&
+                typeof serverMessage.message === 'string' &&
+                serverMessage.message.length > 0
+            ) {
                 toast.error(serverMessage.message);
             } else {
                 toast.error(defaultMessage);
@@ -104,16 +109,13 @@ const LoginClientComponent = () => {
                 toast.info('Please enter your 2FA code to complete login.');
             }
         } catch (error) {
-            if (
-                isAxiosError(error) &&
-                typeof error.response?.data === 'string' &&
-                error.response.data.includes('verify your email')
-            ) {
-                toast.error('Please verify your email address before logging in.', {
+            if (isAxiosError(error) && error.response?.data?.error_code === 'EMAIL_NOT_VERIFIED') {
+                toast.error(error.response.data.message, {
                     action: {
                         label: 'Resend Email',
                         onClick: () => handleResendVerification(email),
                     },
+                    duration: 10000,
                 });
             } else {
                 handleErrorToast(error, 'Login failed. Please check your credentials.');
@@ -165,14 +167,20 @@ const LoginClientComponent = () => {
 
         setIsRegistering(true);
         try {
-            await axios.post(`${API_URL}/auth/register`, {
+            const response = await axios.post(`${API_URL}/auth/register`, {
                 username: registerUsername,
                 email: registerEmail,
                 password: registerPassword,
             });
 
-            toast.success('Registration successful! Please check your email to verify your account.');
+            toast.success(
+                response.data.message || 'Registration successful! Please check your email to verify your account.',
+            );
             setActiveTab('login');
+            setRegisterEmail('');
+            setRegisterUsername('');
+            setRegisterPassword('');
+            setRegisterConfirmPassword('');
         } catch (error) {
             handleErrorToast(error, 'Registration failed. Please try again.');
             console.error('Registration failed:', error);
@@ -187,15 +195,15 @@ const LoginClientComponent = () => {
             return;
         }
         try {
-            await axios.post(`${API_URL}/auth/resend-verification`, { email });
-            toast.success('Verification email sent (if an account with that email exists).');
+            const response = await axios.post(`${API_URL}/auth/resend-verification`, { email });
+            toast.success(response.data.message);
         } catch (error) {
             handleErrorToast(error, 'Failed to send verification email.');
             console.error(error);
         }
     };
 
-    const handleForgotPassword = async (e: FormEvent) => {
+    const handleForgotPassword = (e: FormEvent) => {
         e.preventDefault();
         router.push('/reset-password');
     };

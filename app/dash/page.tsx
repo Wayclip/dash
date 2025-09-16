@@ -162,9 +162,8 @@ const ClipsTable = ({
                                 </Button>
                                 <AlertDialog>
                                     <AlertDialogTrigger
-                                        render={(props) => (
+                                        render={() => (
                                             <Button
-                                                {...props}
                                                 variant='destructive'
                                                 size='icon'
                                                 className='cursor-pointer'
@@ -183,13 +182,8 @@ const ClipsTable = ({
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                             <AlertDialogClose
-                                                render={(props) => (
-                                                    <Button
-                                                        {...props}
-                                                        size='sm'
-                                                        variant='ghost'
-                                                        className='cursor-pointer'
-                                                    >
+                                                render={() => (
+                                                    <Button size='sm' variant='ghost' className='cursor-pointer'>
                                                         Cancel
                                                     </Button>
                                                 )}
@@ -225,7 +219,11 @@ const ResetPasswordDialog = ({ onFinished }: { onFinished: () => void }) => {
             toast.success(response.data.message);
             onFinished();
         } catch (error) {
-            toast.error('Failed to send password reset email.');
+            if (isAxiosError(error) && error.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error('Failed to send password reset email.');
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -288,7 +286,11 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
             setRecoveryCodes(response.data.recovery_codes);
             toast.success('2FA enabled successfully!');
         } catch (error) {
-            toast.error('Invalid verification code. Please try again.');
+            if (isAxiosError(error) && error.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error('Invalid verification code. Please try again.');
+            }
             console.error('2FA verification failed:', error);
         } finally {
             setIsLoading(false);
@@ -421,18 +423,13 @@ const DashboardPage = () => {
     }, [isAuthenticated]);
 
     const handleUnlinkProvider = async (provider: string) => {
-        if (userData?.connected_accounts && userData.connected_accounts.length <= 1) {
-            toast.error('You cannot remove your only authentication method.');
-            return;
-        }
-
         try {
             await axios.delete(`${API_URL}/api/oauth/unlink/${provider}`, { withCredentials: true });
             toast.success(`${provider.charAt(0).toUpperCase() + provider.slice(1)} account unlinked successfully.`);
             await refreshUser();
         } catch (error) {
-            if (isAxiosError(error)) {
-                toast.error(error.response?.data?.message || `Failed to unlink ${provider} account.`);
+            if (isAxiosError(error) && error.response?.data?.message) {
+                toast.error(error.response.data.message);
             } else {
                 toast.error('An unexpected error occurred.');
             }
@@ -442,11 +439,15 @@ const DashboardPage = () => {
 
     const handleDeleteAccount = async () => {
         try {
-            await axios.delete(`${API_URL}/api/account`, { withCredentials: true });
-            toast.success('Your account has been scheduled for deletion.');
+            const response = await axios.delete(`${API_URL}/api/account`, { withCredentials: true });
+            toast.success(response.data.message || 'Your account has been scheduled for deletion.');
             logout();
         } catch (error) {
-            toast.error('Failed to delete account. Please try again.');
+            if (isAxiosError(error) && error.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error('Failed to delete account. Please try again.');
+            }
             console.error('Account deletion failed:', error);
         }
     };
@@ -616,9 +617,8 @@ const DashboardPage = () => {
                                                     </div>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger
-                                                            render={(props) => (
+                                                            render={() => (
                                                                 <Button
-                                                                    {...props}
                                                                     variant='ghost'
                                                                     size='sm'
                                                                     disabled={userData.connected_accounts.length <= 1}
@@ -639,9 +639,8 @@ const DashboardPage = () => {
                                                             </AlertDialogHeader>
                                                             <AlertDialogFooter>
                                                                 <AlertDialogClose
-                                                                    render={(props) => (
+                                                                    render={() => (
                                                                         <Button
-                                                                            {...props}
                                                                             size='sm'
                                                                             variant='ghost'
                                                                             className='cursor-pointer'
@@ -714,8 +713,8 @@ const DashboardPage = () => {
                                     )}
                                     <AlertDialog>
                                         <AlertDialogTrigger
-                                            render={(props) => (
-                                                <Button {...props} variant='destructive' className='cursor-pointer'>
+                                            render={() => (
+                                                <Button variant='destructive' className='cursor-pointer'>
                                                     <Trash2 className='mr-2 size-4' />
                                                     Delete Account
                                                 </Button>
@@ -731,13 +730,8 @@ const DashboardPage = () => {
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
                                                 <AlertDialogClose
-                                                    render={(props) => (
-                                                        <Button
-                                                            {...props}
-                                                            size='sm'
-                                                            variant='ghost'
-                                                            className='cursor-pointer'
-                                                        >
+                                                    render={() => (
+                                                        <Button size='sm' variant='ghost' className='cursor-pointer'>
                                                             Cancel
                                                         </Button>
                                                     )}
@@ -825,9 +819,8 @@ const DashboardPage = () => {
                                     </Button>
                                     <AlertDialog>
                                         <AlertDialogTrigger
-                                            render={(props) => (
+                                            render={() => (
                                                 <Button
-                                                    {...props}
                                                     variant='ghost'
                                                     className='text-destructive hover:text-destructive'
                                                 >
@@ -845,13 +838,8 @@ const DashboardPage = () => {
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
                                                 <AlertDialogClose
-                                                    render={(props) => (
-                                                        <Button
-                                                            {...props}
-                                                            size='sm'
-                                                            variant='ghost'
-                                                            className='cursor-pointer'
-                                                        >
+                                                    render={() => (
+                                                        <Button size='sm' variant='ghost' className='cursor-pointer'>
                                                             Cancel
                                                         </Button>
                                                     )}
