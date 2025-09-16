@@ -27,6 +27,17 @@ export const Navbar = () => {
                     </li>
                     <li>
                         <a
+                            href='https://wayclip.com/download'
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            aria-label='Download'
+                            className='p-2 text-sm text-muted-foreground transition-colors hover:text-accent-foreground'
+                        >
+                            Download
+                        </a>
+                    </li>
+                    <li>
+                        <a
                             href='https://wayclip.com/docs'
                             target='_blank'
                             rel='noopener noreferrer'

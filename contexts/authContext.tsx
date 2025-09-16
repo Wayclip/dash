@@ -45,6 +45,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    const doLogout = async () => {
+        try {
+            await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
+        } catch (error) {
+            console.error('Logout request failed, proceeding with client-side logout:', error);
+        } finally {
+            setUser(null);
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
+            }
+        }
+    };
+
     const fetchUser = async () => {
         if (!API_URL) {
             console.error('Error: NEXT_PUBLIC_API_URL is not defined. Please check your .env.local file.');
@@ -57,7 +70,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             });
 
             if (response.data) {
-                setUser(response.data);
+                if (response.data.is_banned) {
+                    await doLogout();
+                } else {
+                    setUser(response.data);
+                }
             } else {
                 setUser(null);
             }
@@ -77,22 +94,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await fetchUser();
     };
 
-    const logout = async () => {
-        try {
-            await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
-        } catch (error) {
-            console.error('Logout request failed, proceeding with client-side logout:', error);
-        } finally {
-            setUser(null);
-            window.location.href = '/login';
-        }
-    };
-
     const value = {
         user,
         isAuthenticated: !!user,
         isLoading,
-        logout,
+        logout: doLogout,
         refreshUser,
     };
 

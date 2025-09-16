@@ -126,6 +126,14 @@ export default function RootLayout({
                                                     Documentation
                                                 </Link>
                                             </li>
+                                            <li>
+                                                <Link
+                                                    href='https://wayclip.com/download'
+                                                    className='hover:text-foreground transition-colors'
+                                                >
+                                                    Download
+                                                </Link>
+                                            </li>
                                         </ul>
                                     </div>
                                 </div>

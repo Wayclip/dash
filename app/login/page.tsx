@@ -39,9 +39,6 @@ const LoginClientComponent = () => {
     const [twoFAToken, setTwoFAToken] = useState('');
     const [twoFACode, setTwoFACode] = useState('');
     const [is2FASubmitting, setIs2FASubmitting] = useState(false);
-    const [showForgotPassword, setShowForgotPassword] = useState(false);
-    const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
-    const [isForgotPasswordSubmitting, setIsForgotPasswordSubmitting] = useState(false);
 
     useEffect(() => {
         if (!isLoading && isAuthenticated) {
@@ -53,8 +50,14 @@ const LoginClientComponent = () => {
         const verified = searchParams.get('verified');
         if (verified === 'true') {
             toast.success('Email verified successfully! You can now log in.');
+            router.replace('/login');
         }
-    }, [searchParams]);
+        const reset = searchParams.get('reset_success');
+        if (reset === 'true') {
+            toast.success('Password has been reset successfully. Please log in.');
+            router.replace('/login');
+        }
+    }, [searchParams, router]);
 
     const handleOAuthLogin = (provider: 'github' | 'google' | 'discord') => {
         if (!API_URL) {
@@ -64,6 +67,21 @@ const LoginClientComponent = () => {
         const finalRedirectUri = window.location.origin + '/dash';
         const loginUrl = `${API_URL}/auth/${provider}?redirect_uri=${encodeURIComponent(finalRedirectUri)}`;
         window.location.href = loginUrl;
+    };
+
+    const handleErrorToast = (error: unknown, defaultMessage: string) => {
+        if (isAxiosError(error) && error.response?.data) {
+            const serverMessage = error.response.data;
+            if (typeof serverMessage === 'string' && serverMessage.length > 0) {
+                toast.error(serverMessage);
+            } else if (typeof serverMessage.message === 'string' && serverMessage.message.length > 0) {
+                toast.error(serverMessage.message);
+            } else {
+                toast.error(defaultMessage);
+            }
+        } else {
+            toast.error(defaultMessage);
+        }
     };
 
     const handlePasswordLogin = async (e: FormEvent) => {
@@ -86,20 +104,19 @@ const LoginClientComponent = () => {
                 toast.info('Please enter your 2FA code to complete login.');
             }
         } catch (error) {
-            if (isAxiosError(error)) {
-                const errorMessage = error.response?.data || 'Login failed. Please check your credentials.';
-                if (typeof errorMessage === 'string' && errorMessage.includes('verify your email')) {
-                    toast.error('Please verify your email address before logging in.', {
-                        action: {
-                            label: 'Resend Email',
-                            onClick: () => handleResendVerification(email),
-                        },
-                    });
-                } else {
-                    toast.error(errorMessage);
-                }
+            if (
+                isAxiosError(error) &&
+                typeof error.response?.data === 'string' &&
+                error.response.data.includes('verify your email')
+            ) {
+                toast.error('Please verify your email address before logging in.', {
+                    action: {
+                        label: 'Resend Email',
+                        onClick: () => handleResendVerification(email),
+                    },
+                });
             } else {
-                toast.error('An unexpected error occurred.');
+                handleErrorToast(error, 'Login failed. Please check your credentials.');
             }
             console.error('Password login failed:', error);
         } finally {
@@ -126,7 +143,7 @@ const LoginClientComponent = () => {
                 window.location.href = '/dash';
             }
         } catch (error) {
-            toast.error('Invalid 2FA code. Please try again.');
+            handleErrorToast(error, 'Invalid 2FA code. Please try again.');
             console.error('2FA login failed:', error);
         } finally {
             setIs2FASubmitting(false);
@@ -157,13 +174,7 @@ const LoginClientComponent = () => {
             toast.success('Registration successful! Please check your email to verify your account.');
             setActiveTab('login');
         } catch (error) {
-            console.error(error);
-            if (isAxiosError(error)) {
-                const errorMessage = error.response?.data || 'Registration failed. Please try again.';
-                toast.error(errorMessage);
-            } else {
-                toast.error('Registration failed. Please try again.');
-            }
+            handleErrorToast(error, 'Registration failed. Please try again.');
             console.error('Registration failed:', error);
         } finally {
             setIsRegistering(false);
@@ -179,26 +190,14 @@ const LoginClientComponent = () => {
             await axios.post(`${API_URL}/auth/resend-verification`, { email });
             toast.success('Verification email sent (if an account with that email exists).');
         } catch (error) {
+            handleErrorToast(error, 'Failed to send verification email.');
             console.error(error);
-            toast.error('Failed to send verification email.');
         }
     };
 
     const handleForgotPassword = async (e: FormEvent) => {
         e.preventDefault();
-        setIsForgotPasswordSubmitting(true);
-        try {
-            const response = await axios.post(`${API_URL}/auth/forgot-password`, {
-                email: forgotPasswordEmail,
-            });
-            toast.success(response.data.message);
-            setShowForgotPassword(false);
-        } catch (error) {
-            toast.error('Failed to send password reset email. Please try again.');
-            console.error('Forgot password failed:', error);
-        } finally {
-            setIsForgotPasswordSubmitting(false);
-        }
+        router.push('/reset-password');
     };
 
     if (isLoading || isAuthenticated) {
@@ -240,44 +239,6 @@ const LoginClientComponent = () => {
                                 variant='outline'
                                 className='w-full'
                                 onClick={() => setShow2FA(false)}
-                            >
-                                Back to Login
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-    if (showForgotPassword) {
-        return (
-            <div className='flex items-center justify-center min-h-screen bg-background/40'>
-                <Card className='w-full max-w-sm'>
-                    <CardHeader className='text-center'>
-                        <CardTitle className='text-2xl'>Forgot Password</CardTitle>
-                        <CardDescription>Enter your email address to receive a password reset link.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleForgotPassword} className='grid gap-4'>
-                            <div className='grid gap-2'>
-                                <Label htmlFor='forgot-password-email'>Email</Label>
-                                <Input
-                                    id='forgot-password-email'
-                                    type='email'
-                                    placeholder='me@example.com'
-                                    required
-                                    value={forgotPasswordEmail}
-                                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                                />
-                            </div>
-                            <Button type='submit' className='w-full' disabled={isForgotPasswordSubmitting}>
-                                {isForgotPasswordSubmitting ? 'Sending...' : 'Send Reset Link'}
-                            </Button>
-                            <Button
-                                type='button'
-                                variant='outline'
-                                className='w-full'
-                                onClick={() => setShowForgotPassword(false)}
                             >
                                 Back to Login
                             </Button>
@@ -356,7 +317,7 @@ const LoginClientComponent = () => {
                                                 type='button'
                                                 variant='link'
                                                 className='ml-auto h-auto p-0 text-sm'
-                                                onClick={() => setShowForgotPassword(true)}
+                                                onClick={handleForgotPassword}
                                             >
                                                 Forgot password?
                                             </Button>
