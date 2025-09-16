@@ -36,6 +36,7 @@ export const PaymentVerificationClient = () => {
             try {
                 const response = await axios.get(
                     `https://wayclip.com/api/checkout/verify-session?session_id=${sessionId}`,
+                    { withCredentials: true },
                 );
 
                 if (response.data.status === 'paid') {
