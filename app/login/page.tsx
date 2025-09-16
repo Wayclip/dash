@@ -57,6 +57,11 @@ const LoginClientComponent = () => {
             toast.success('Password has been reset successfully. Please log in.');
             router.replace('/login');
         }
+        const error = searchParams.get('error');
+        if (error) {
+            toast.error(error);
+            router.replace('/login');
+        }
     }, [searchParams, router]);
 
     const handleOAuthLogin = (provider: 'github' | 'google' | 'discord') => {
