@@ -501,17 +501,6 @@ const DashboardPage = () => {
         }
     };
 
-    const handleCancelSubscription = async () => {
-        try {
-            await axios.delete(`${API_URL}/api/subscription`, { withCredentials: true });
-            toast.success('Your subscription is scheduled for cancellation at the end of the billing period.');
-            await refreshUser();
-        } catch (error) {
-            toast.error('Failed to cancel subscription. Please try again or use the billing portal.');
-            console.error('Subscription cancellation failed:', error);
-        }
-    };
-
     const handleCopyUrl = (url: string) => {
         navigator.clipboard.writeText(url);
         toast.success('URL copied to clipboard!');
@@ -817,43 +806,6 @@ const DashboardPage = () => {
                                         <ExternalLink className='mr-2 size-4' />
                                         {isManagingSubscription ? 'Redirecting...' : 'Manage Billing'}
                                     </Button>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger
-                                            render={() => (
-                                                <Button
-                                                    variant='ghost'
-                                                    className='text-destructive hover:text-destructive'
-                                                >
-                                                    Cancel Subscription
-                                                </Button>
-                                            )}
-                                        />
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure you want to cancel?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    Your subscription will remain active until the end of the current
-                                                    billing period.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogClose
-                                                    render={() => (
-                                                        <Button size='sm' variant='ghost' className='cursor-pointer'>
-                                                            Cancel
-                                                        </Button>
-                                                    )}
-                                                />
-                                                <Button
-                                                    variant={'destructive'}
-                                                    onClick={handleCancelSubscription}
-                                                    className='cursor-pointer'
-                                                >
-                                                    Yes, Cancel Subscription
-                                                </Button>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
                                 </CardFooter>
                             </Card>
                         ) : (
