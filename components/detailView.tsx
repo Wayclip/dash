@@ -22,7 +22,7 @@ import { useAuth } from '@/contexts/authContext';
 
 const API_URL = 'https://wayclip.com';
 
-type UserRole = 'user' | 'admin';
+type UserRole = 'User' | 'Admin';
 type SubscriptionTier = 'free' | 'tier1' | 'tier2' | 'tier3';
 interface FullUserDetails {
     id: string;
@@ -89,7 +89,12 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
             return;
         }
         handleAction(
-            () => axios.post(`${API_URL}/admin/users/${userId}/role`, { role }, { withCredentials: true }),
+            () =>
+                axios.post(
+                    `${API_URL}/admin/users/${userId}/role`,
+                    { role: role.toLowerCase() },
+                    { withCredentials: true },
+                ),
             'User role updated.',
         );
     };
@@ -169,8 +174,8 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                             <SelectValue placeholder='Select role' />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value='user'>User</SelectItem>
-                            <SelectItem value='admin'>Admin</SelectItem>
+                            <SelectItem value='User'>User</SelectItem>
+                            <SelectItem value='Admin'>Admin</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

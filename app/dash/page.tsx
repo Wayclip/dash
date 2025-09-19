@@ -534,7 +534,7 @@ const DashboardPage = () => {
                         <h1 className='text-2xl font-semibold'>Dashboard</h1>
                     </header>
 
-                    {userData.role === 'admin' && (
+                    {userData.role === 'Admin' && (
                         <div className='mb-8'>
                             <AdminPanel />
                         </div>

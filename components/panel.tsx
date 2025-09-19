@@ -29,7 +29,7 @@ interface UserAdminInfo {
     email: string | null;
     tier: string;
     is_banned: boolean;
-    role: 'user' | 'admin';
+    role: 'User' | 'Admin';
     clip_count: number;
     data_used: number;
 }
