@@ -22,7 +22,7 @@ import { useAuth } from '@/contexts/authContext';
 
 const API_URL = 'https://wayclip.com';
 
-type UserRole = 'User' | 'Admin';
+type UserRole = 'user' | 'admin';
 type SubscriptionTier = 'free' | 'tier1' | 'tier2' | 'tier3';
 interface FullUserDetails {
     id: string;
