@@ -192,7 +192,7 @@ const AdminPanel = () => {
                                             <TableRow className='cursor-pointer hover:bg-muted/50 data-[state=open]:bg-muted'>
                                                 <TableCell>{user.username}</TableCell>
                                                 <TableCell>
-                                                    <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                                                    <Badge variant={user.role === 'Admin' ? 'default' : 'secondary'}>
                                                         {user.role}
                                                     </Badge>
                                                 </TableCell>
