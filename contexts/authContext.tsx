@@ -20,6 +20,7 @@ interface UserProfile {
     storage_limit: number;
     clip_count: number;
     connected_accounts: CredentialProvider[];
+    role: 'user' | 'admin';
 }
 
 interface AuthContextType {

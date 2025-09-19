@@ -1,6 +1,7 @@
 'use client';
 
 import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug, Shield, ShieldCheck, Key } from 'lucide-react';
+import AdminPanel from '@/components/panel';
 import { toast } from 'sonner';
 import { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
@@ -532,6 +533,12 @@ const DashboardPage = () => {
                     <header className='sm:py-4'>
                         <h1 className='text-2xl font-semibold'>Dashboard</h1>
                     </header>
+
+                    {userData.role === 'admin' && (
+                        <div className='mb-8'>
+                            <AdminPanel />
+                        </div>
+                    )}
 
                     <div className='flex flex-col gap-4'>
                         <header>
