@@ -89,12 +89,7 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
             return;
         }
         handleAction(
-            () =>
-                axios.post(
-                    `${API_URL}/admin/users/${userId}/role`,
-                    { role: role.toLowerCase() },
-                    { withCredentials: true },
-                ),
+            () => axios.post(`${API_URL}/admin/users/${userId}/role`, { role: role }, { withCredentials: true }),
             'User role updated.',
         );
     };
