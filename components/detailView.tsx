@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     AlertDialog,
-    AlertDialogClose,
+    AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
     AlertDialogFooter,
@@ -169,8 +169,8 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                             <SelectValue placeholder='Select role' />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value='User'>User</SelectItem>
-                            <SelectItem value='Admin'>Admin</SelectItem>
+                            <SelectItem value='user'>User</SelectItem>
+                            <SelectItem value='admin'>Admin</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -193,13 +193,11 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                 </div>
                 {details.isBanned && (
                     <AlertDialog>
-                        <AlertDialogTrigger
-                            render={() => (
-                                <Button variant='outline' className='self-end'>
-                                    Unban User
-                                </Button>
-                            )}
-                        />
+                        <AlertDialogTrigger asChild>
+                            <Button variant='outline' className='self-end'>
+                                Unban User
+                            </Button>
+                        </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
                                 <AlertDialogTitle>Confirm Unban</AlertDialogTitle>
@@ -208,13 +206,11 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                                <AlertDialogClose
-                                    render={() => (
-                                        <Button size='sm' variant='ghost' className='cursor-pointer'>
-                                            Cancel
-                                        </Button>
-                                    )}
-                                />
+                                <AlertDialogCancel asChild>
+                                    <Button size='sm' variant='ghost' className='cursor-pointer'>
+                                        Cancel
+                                    </Button>
+                                </AlertDialogCancel>
                                 <Button onClick={handleUnban}>Yes, Unban</Button>
                             </AlertDialogFooter>
                         </AlertDialogContent>

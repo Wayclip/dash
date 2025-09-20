@@ -31,7 +31,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
     AlertDialog,
-    AlertDialogClose,
+    AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
     AlertDialogFooter,
@@ -162,18 +162,16 @@ const ClipsTable = ({
                                     <Copy className='size-4' />
                                 </Button>
                                 <AlertDialog>
-                                    <AlertDialogTrigger
-                                        render={() => (
-                                            <Button
-                                                variant='destructive'
-                                                size='icon'
-                                                className='cursor-pointer'
-                                                aria-label='Delete clip'
-                                            >
-                                                <Trash2 className='size-4' />
-                                            </Button>
-                                        )}
-                                    />
+                                    <AlertDialogTrigger asChild>
+                                        <Button
+                                            variant='destructive'
+                                            size='icon'
+                                            className='cursor-pointer'
+                                            aria-label='Delete clip'
+                                        >
+                                            <Trash2 className='size-4' />
+                                        </Button>
+                                    </AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -182,13 +180,11 @@ const ClipsTable = ({
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
-                                            <AlertDialogClose
-                                                render={() => (
-                                                    <Button size='sm' variant='ghost' className='cursor-pointer'>
-                                                        Cancel
-                                                    </Button>
-                                                )}
-                                            />
+                                            <AlertDialogCancel asChild>
+                                                <Button size='sm' variant='ghost' className='cursor-pointer'>
+                                                    Cancel
+                                                </Button>
+                                            </AlertDialogCancel>
                                             <Button
                                                 variant='destructive'
                                                 onClick={() => onDelete(clip.id)}
@@ -612,19 +608,17 @@ const DashboardPage = () => {
                                                         <span className='font-medium capitalize'>{provider}</span>
                                                     </div>
                                                     <AlertDialog>
-                                                        <AlertDialogTrigger
-                                                            render={() => (
-                                                                <Button
-                                                                    variant='ghost'
-                                                                    size='sm'
-                                                                    disabled={userData.connected_accounts.length <= 1}
-                                                                    className='text-xs cursor-pointer'
-                                                                >
-                                                                    <Unplug className='mr-2 h-3 w-3' />
-                                                                    Unlink
-                                                                </Button>
-                                                            )}
-                                                        />
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button
+                                                                variant='ghost'
+                                                                size='sm'
+                                                                disabled={userData.connected_accounts.length <= 1}
+                                                                className='text-xs cursor-pointer'
+                                                            >
+                                                                <Unplug className='mr-2 h-3 w-3' />
+                                                                Unlink
+                                                            </Button>
+                                                        </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader>
                                                                 <AlertDialogTitle>Unlink {provider}?</AlertDialogTitle>
@@ -634,17 +628,15 @@ const DashboardPage = () => {
                                                                 </AlertDialogDescription>
                                                             </AlertDialogHeader>
                                                             <AlertDialogFooter>
-                                                                <AlertDialogClose
-                                                                    render={() => (
-                                                                        <Button
-                                                                            size='sm'
-                                                                            variant='ghost'
-                                                                            className='cursor-pointer'
-                                                                        >
-                                                                            Cancel
-                                                                        </Button>
-                                                                    )}
-                                                                />
+                                                                <AlertDialogCancel asChild>
+                                                                    <Button
+                                                                        size='sm'
+                                                                        variant='ghost'
+                                                                        className='cursor-pointer'
+                                                                    >
+                                                                        Cancel
+                                                                    </Button>
+                                                                </AlertDialogCancel>
                                                                 <Button
                                                                     onClick={() => handleUnlinkProvider(provider)}
                                                                     className='cursor-pointer'
@@ -708,14 +700,12 @@ const DashboardPage = () => {
                                         </Dialog>
                                     )}
                                     <AlertDialog>
-                                        <AlertDialogTrigger
-                                            render={() => (
-                                                <Button variant='destructive' className='cursor-pointer'>
-                                                    <Trash2 className='mr-2 size-4' />
-                                                    Delete Account
-                                                </Button>
-                                            )}
-                                        />
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant='destructive' className='cursor-pointer'>
+                                                <Trash2 className='mr-2 size-4' />
+                                                Delete Account
+                                            </Button>
+                                        </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -725,13 +715,11 @@ const DashboardPage = () => {
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogClose
-                                                    render={() => (
-                                                        <Button size='sm' variant='ghost' className='cursor-pointer'>
-                                                            Cancel
-                                                        </Button>
-                                                    )}
-                                                />
+                                                <AlertDialogCancel asChild>
+                                                    <Button size='sm' variant='ghost' className='cursor-pointer'>
+                                                        Cancel
+                                                    </Button>
+                                                </AlertDialogCancel>
                                                 <Button
                                                     variant='destructive'
                                                     onClick={handleDeleteAccount}
@@ -792,7 +780,10 @@ const DashboardPage = () => {
                         </div>
                     </div>
 
-                    <div className='flex flex-col gap-4 my-8'>
+                    <div className='flex flex-col gap-4 mb-8 mt-4'>
+                        <header>
+                            <h2 className='text-xl font-semibold'>Billing & Subscriptions</h2>
+                        </header>
                         {userData.tier !== 'free' ? (
                             <Card>
                                 <CardHeader>
@@ -809,7 +800,11 @@ const DashboardPage = () => {
                                     </p>
                                 </CardContent>
                                 <CardFooter className='flex flex-wrap gap-2'>
-                                    <Button onClick={handleManageSubscription} disabled={isManagingSubscription}>
+                                    <Button
+                                        onClick={handleManageSubscription}
+                                        disabled={isManagingSubscription}
+                                        className='cursor-pointer'
+                                    >
                                         <ExternalLink className='mr-2 size-4' />
                                         {isManagingSubscription ? 'Redirecting...' : 'Manage Billing'}
                                     </Button>
@@ -875,7 +870,7 @@ const DashboardPage = () => {
                                             </Button>
                                         ) : (
                                             <Button
-                                                className='w-full'
+                                                className='w-full cursor-pointer'
                                                 disabled={plan.tierId === userData.tier}
                                                 onClick={handleManageSubscription}
                                             >
