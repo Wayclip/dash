@@ -120,34 +120,59 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
         <div className='p-4 bg-muted space-y-6'>
             <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'>
                 <DetailItem label='User ID' value={<pre className='text-xs'>{details.id}</pre>} />
-                <DetailItem label='Email' value={details.email} />
-                <DetailItem label='Joined At' value={new Date(details.createdAt).toLocaleString()} />
+                <DetailItem label='Email' value={<pre className='text-xs'>{details.email}</pre>} />
+                <DetailItem
+                    label='Joined At'
+                    value={<pre className='text-xs'>{new Date(details.createdAt).toLocaleString()}</pre>}
+                />
                 <DetailItem
                     label='Email Verified'
                     value={
                         details.emailVerifiedAt ? (
-                            new Date(details.emailVerifiedAt).toLocaleString()
+                            <pre className='text-xs'>{new Date(details.emailVerifiedAt).toLocaleString()}</pre>
                         ) : (
-                            <Badge variant='secondary'>No</Badge>
+                            <pre className='text-xs'>
+                                <Badge variant='secondary'>No</Badge>
+                            </pre>
                         )
                     }
                 />
                 <DetailItem
                     label='2FA Enabled'
-                    value={details.twoFactorEnabled ? <Badge>Yes</Badge> : <Badge variant='secondary'>No</Badge>}
+                    value={
+                        details.twoFactorEnabled ? (
+                            <pre className='text-xs'>
+                                <Badge>Yes</Badge>
+                            </pre>
+                        ) : (
+                            <pre className='text-xs'>
+                                <Badge variant='secondary'>No</Badge>
+                            </pre>
+                        )
+                    }
                 />
                 <DetailItem
                     label='Subscription Status'
-                    value={details.subscriptionStatus ? <Badge>{details.subscriptionStatus}</Badge> : null}
+                    value={
+                        details.subscriptionStatus ? (
+                            <pre className='text-xs'>
+                                <Badge>{details.subscriptionStatus}</Badge>
+                            </pre>
+                        ) : null
+                    }
                 />
                 <DetailItem
                     label='Period End'
-                    value={details.currentPeriodEnd ? new Date(details.currentPeriodEnd).toLocaleDateString() : null}
+                    value={
+                        details.currentPeriodEnd ? (
+                            <pre className='text-xs'> {new Date(details.currentPeriodEnd).toLocaleDateString()} </pre>
+                        ) : null
+                    }
                 />
                 <DetailItem
                     label='Auth Methods'
                     value={
-                        <div className='flex gap-1 flex-wrap'>
+                        <div className='flex gap-1 flex-wrap text-xs'>
                             {details.connectedProviders.map((p) => (
                                 <Badge key={p} variant='outline'>
                                     {p}
