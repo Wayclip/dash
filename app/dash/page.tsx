@@ -1,6 +1,18 @@
 'use client';
 
-import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug, Shield, ShieldCheck, Key, Clock } from 'lucide-react';
+import {
+    Copy,
+    Trash2,
+    ExternalLink,
+    Check,
+    LogOut,
+    Unplug,
+    Shield,
+    ShieldCheck,
+    Key,
+    Clock,
+    LogOutIcon,
+} from 'lucide-react';
 import AdminPanel from '@/components/panel';
 import { toast } from 'sonner';
 import { FormEvent } from 'react';
@@ -508,6 +520,19 @@ const DashboardPage = () => {
         refreshUser();
     };
 
+    const handleLogoutOtherDevices = async () => {
+        try {
+            const response = await axios.post(`${API_URL}/auth/logout-devices`, {}, { withCredentials: true });
+            toast.success(response.data.message || 'Successfully logged out other devices.');
+        } catch (error) {
+            if (isAxiosError(error) && error.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error('Failed to log out other devices.');
+            }
+        }
+    };
+
     if (isLoading) {
         return <LoadingScreen />;
     }
@@ -656,6 +681,28 @@ const DashboardPage = () => {
                                         <LogOut className='mr-2 size-4' />
                                         Sign Out
                                     </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant='outline' className='cursor-pointer'>
+                                                <LogOutIcon className='mr-2 size-4' />
+                                                Sign Out Other Devices
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Sign out everywhere else?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will sign you out of all other active sessions on other
+                                                    browsers and devices. Your current session will remain active.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <Button onClick={handleLogoutOtherDevices}>Continue</Button>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+
                                     {!userData.two_factor_enabled && (
                                         <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
                                             <DialogTrigger asChild>
