@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import axios from 'axios';
 
 type CredentialProvider = 'email' | 'github' | 'google' | 'discord';
@@ -21,6 +21,8 @@ interface UserProfile {
     clip_count: number;
     connected_accounts: CredentialProvider[];
     role: 'user' | 'admin';
+    last_login_at?: string;
+    last_login_ip?: string;
 }
 
 interface AuthContextType {
@@ -59,36 +61,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const fetchUser = async () => {
+    const fetchUser = useCallback(async () => {
         if (!API_URL) {
             console.error('Error: NEXT_PUBLIC_API_URL is not defined. Please check your .env.local file.');
             setIsLoading(false);
             return;
         }
         try {
-            const response = await axios.get(`${API_URL}/api/me`, {
+            const response = await axios.get<{ user: UserProfile }>(`${API_URL}/api/me`, {
                 withCredentials: true,
             });
 
-            if (response.data) {
-                if (response.data.is_banned) {
+            if (response.data && response.data.user) {
+                if (response.data.user.is_banned) {
                     await doLogout();
                 } else {
-                    setUser(response.data);
+                    setUser(response.data.user);
                 }
             } else {
                 setUser(null);
             }
         } catch (error) {
+            console.error(error);
             setUser(null);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchUser();
-    }, []);
+    }, [fetchUser]);
 
     const refreshUser = async () => {
         setIsLoading(true);

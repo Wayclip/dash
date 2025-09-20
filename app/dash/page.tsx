@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug, Shield, ShieldCheck, Key } from 'lucide-react';
+import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug, Shield, ShieldCheck, Key, Clock } from 'lucide-react';
 import AdminPanel from '@/components/panel';
 import { toast } from 'sonner';
 import { FormEvent } from 'react';
@@ -540,8 +540,8 @@ const DashboardPage = () => {
                         <header>
                             <h2 className='text-xl font-semibold'>Account Data</h2>
                         </header>
-                        <div className='flex flex-col gap-6'>
-                            <Card className='flex flex-col'>
+                        <div className='grid lg:grid-cols-3 gap-6'>
+                            <Card className='flex flex-col lg:col-span-2'>
                                 <CardHeader>
                                     <CardTitle>Account Information</CardTitle>
                                     <CardDescription>
@@ -733,6 +733,43 @@ const DashboardPage = () => {
                                 </CardFooter>
                             </Card>
 
+                            <Card className='flex flex-col'>
+                                <CardHeader>
+                                    <CardTitle className='flex items-center gap-2'>
+                                        <Clock className='size-5' />
+                                        Recent Activity
+                                    </CardTitle>
+                                    <CardDescription>Your last known login.</CardDescription>
+                                </CardHeader>
+                                <CardContent className='flex-1 flex items-center'>
+                                    {userData.last_login_at && userData.last_login_ip ? (
+                                        <div className='text-sm text-muted-foreground space-y-2'>
+                                            <div>
+                                                <p className='font-medium text-foreground'>Last Login Time</p>
+                                                <p>{new Date(userData.last_login_at).toLocaleString()}</p>
+                                            </div>
+                                            <div>
+                                                <p className='font-medium text-foreground'>IP Address</p>
+                                                <p>{userData.last_login_ip}</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className='text-sm text-muted-foreground'>
+                                            No recent login activity to show.
+                                        </p>
+                                    )}
+                                </CardContent>
+                                <CardFooter>
+                                    <p className='text-xs text-muted-foreground'>
+                                        If you don&apos;t recognize this activity, please reset your password.
+                                    </p>
+                                </CardFooter>
+                            </Card>
+                        </div>
+                    </div>
+
+                    <div className='flex flex-col gap-4'>
+                        <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                             <Card>
                                 <CardHeader>
                                     <CardTitle className='text-base font-medium text-muted-foreground'>
@@ -747,11 +784,6 @@ const DashboardPage = () => {
                                         <span className='text-muted-foreground'>
                                             / {storageLimitGB > 0 ? `${storageLimitGB.toFixed(0)} GB` : '2 GB'} used
                                         </span>
-                                        <span className='ml-auto text-3xl font-bold text-muted-foreground tracking-tight'>
-                                            {storageLimitGB > 0
-                                                ? `${Math.round((storageUsedGB / storageLimitGB) * 100)}%`
-                                                : '0%'}
-                                        </span>
                                     </div>
                                     <Progress
                                         value={storageUsedPercentage}
@@ -759,7 +791,6 @@ const DashboardPage = () => {
                                     />
                                 </CardContent>
                             </Card>
-
                             <Card>
                                 <CardHeader>
                                     <CardTitle className='text-base font-medium text-muted-foreground'>
@@ -768,16 +799,25 @@ const DashboardPage = () => {
                                 </CardHeader>
                                 <CardContent>
                                     <p className='text-4xl font-bold tracking-tight'>{userData.clip_count}</p>
-                                    {clipsLoading ? (
-                                        <div className='flex justify-center py-8'>
-                                            <div className='h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent' />
-                                        </div>
-                                    ) : (
-                                        <ClipsTable clips={clips} onDelete={handleDeleteClip} onCopy={handleCopyUrl} />
-                                    )}
                                 </CardContent>
                             </Card>
                         </div>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Your Clips</CardTitle>
+                                <CardDescription>Manage your uploaded clips.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {clipsLoading ? (
+                                    <div className='flex justify-center py-8'>
+                                        <div className='h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent' />
+                                    </div>
+                                ) : (
+                                    <ClipsTable clips={clips} onDelete={handleDeleteClip} onCopy={handleCopyUrl} />
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
 
                     <div className='flex flex-col gap-4 mb-8 mt-4'>

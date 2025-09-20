@@ -62,6 +62,15 @@ const LoginClientComponent = () => {
             toast.error(error);
             router.replace('/login');
         }
+
+        const is2FARequired = searchParams.get('2fa_required');
+        const token = searchParams.get('token');
+        if (is2FARequired === 'true' && token) {
+            setTwoFAToken(token);
+            setShow2FA(true);
+            toast.info('Please enter your 2FA code to complete login.');
+            router.replace('/login');
+        }
     }, [searchParams, router]);
 
     const handleOAuthLogin = (provider: 'github' | 'google' | 'discord') => {
@@ -77,7 +86,6 @@ const LoginClientComponent = () => {
     const handleErrorToast = (error: unknown, defaultMessage: string) => {
         if (isAxiosError(error) && error.response?.data) {
             const serverMessage = error.response.data;
-            // Handle cases where the response body is a string or an object with a 'message' property
             if (typeof serverMessage === 'string' && serverMessage.length > 0) {
                 toast.error(serverMessage);
             } else if (
