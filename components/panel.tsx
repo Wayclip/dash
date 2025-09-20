@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ShieldAlert, Trash2, Ban } from 'lucide-react';
+import { ShieldAlert, Trash2, Ban, EyeOff } from 'lucide-react';
 
 const API_URL = 'https://wayclip.com';
 
@@ -73,7 +73,7 @@ const AdminPanel = () => {
     const handleRemoveVideo = async (token: string) => {
         if (!window.confirm('Are you sure you want to remove this video?')) return;
         try {
-            const response = await axios.get(`${API_URL}/admin/remove/${token}`);
+            const response = await axios.get(`${API_URL}/admin/remove/${token}`, { withCredentials: true });
             toast.success(response.data);
             fetchData();
         } catch (error) {
@@ -84,11 +84,22 @@ const AdminPanel = () => {
     const handleBanUser = async (token: string) => {
         if (!window.confirm('Are you sure you want to ban this user and their IP?')) return;
         try {
-            const response = await axios.get(`${API_URL}/admin/ban/${token}`);
+            const response = await axios.get(`${API_URL}/admin/ban/${token}`, { withCredentials: true });
             toast.success(response.data);
             fetchData();
         } catch (error) {
             toast.error(`Failed to ban user: ${error}`);
+        }
+    };
+
+    const handleIgnoreReport = async (token: string) => {
+        if (!window.confirm('Are you sure you want to ignore this report?')) return;
+        try {
+            const response = await axios.get(`${API_URL}/admin/ignore/${token}`, { withCredentials: true });
+            toast.success(response.data);
+            fetchData();
+        } catch (error) {
+            toast.error(`Failed to ignore report: ${error}`);
         }
     };
 
@@ -127,7 +138,11 @@ const AdminPanel = () => {
                                 {data.reported_clips.map((clip) => (
                                     <TableRow key={clip.clip_id}>
                                         <TableCell>
-                                            <a href={`/clip/${clip.clip_id}`} target='_blank' rel='noopener noreferrer'>
+                                            <a
+                                                href={`${API_URL}/clip/${clip.clip_id}`}
+                                                target='_blank'
+                                                rel='noopener noreferrer'
+                                            >
                                                 {clip.file_name}
                                             </a>
                                         </TableCell>
@@ -135,6 +150,16 @@ const AdminPanel = () => {
                                         <TableCell className='flex justify-end gap-2'>
                                             <Button
                                                 size='sm'
+                                                variant='ghost'
+                                                className='cursor-pointer'
+                                                onClick={() => handleIgnoreReport(clip.report_token)}
+                                            >
+                                                <EyeOff className='mr-2 h-4 w-4' />
+                                                Ignore
+                                            </Button>
+                                            <Button
+                                                size='sm'
+                                                className='cursor-pointer'
                                                 variant='destructive'
                                                 onClick={() => handleRemoveVideo(clip.report_token)}
                                             >
@@ -143,6 +168,7 @@ const AdminPanel = () => {
                                             </Button>
                                             <Button
                                                 size='sm'
+                                                className='cursor-pointer'
                                                 variant='outline'
                                                 onClick={() => handleBanUser(clip.report_token)}
                                             >

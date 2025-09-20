@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import axios, { isAxiosError } from 'axios';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     AlertDialog,
+    AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
@@ -17,13 +19,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Ban, Trash2, Video, ExternalLink, Copy } from 'lucide-react';
 import { useAuth } from '@/contexts/authContext';
 
 const API_URL = 'https://wayclip.com';
 
 type UserRole = 'user' | 'admin';
 type SubscriptionTier = 'free' | 'tier1' | 'tier2' | 'tier3';
+
 interface FullUserDetails {
     id: string;
     username: string;
@@ -41,6 +44,13 @@ interface FullUserDetails {
     connectedProviders: string[];
 }
 
+interface UserClip {
+    id: string;
+    file_name: string;
+    file_size: number;
+    created_at: string;
+}
+
 const DetailItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
     <div>
         <p className='text-sm font-medium text-muted-foreground'>{label}</p>
@@ -48,10 +58,21 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
     </div>
 );
 
+const formatBytes = (bytes: number, decimals = 2) => {
+    if (!+bytes) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+};
+
 export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDataChange: () => void }) => {
     const { user: adminUser } = useAuth();
     const [details, setDetails] = useState<FullUserDetails | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [userClips, setUserClips] = useState<UserClip[] | null>(null);
+    const [clipsLoading, setClipsLoading] = useState(false);
 
     const fetchDetails = useCallback(async () => {
         try {
@@ -108,6 +129,44 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
         );
     };
 
+    const handleBanUser = () => {
+        handleAction(
+            () => axios.post(`${API_URL}/admin/users/${userId}/ban`, {}, { withCredentials: true }),
+            'User has been banned.',
+        );
+    };
+
+    const handleDeleteUser = () => {
+        handleAction(
+            () => axios.delete(`${API_URL}/admin/users/${userId}`, { withCredentials: true }),
+            'User has been permanently deleted.',
+        );
+    };
+
+    const fetchUserClips = async () => {
+        setClipsLoading(true);
+        try {
+            const response = await axios.get<UserClip[]>(`${API_URL}/admin/users/${userId}/clips`, {
+                withCredentials: true,
+            });
+            setUserClips(response.data);
+        } catch (error) {
+            toast.error(`Failed to fetch user clips, ${error}`);
+        } finally {
+            setClipsLoading(false);
+        }
+    };
+
+    const handleDeleteClip = async (clipId: string) => {
+        try {
+            await axios.delete(`${API_URL}/admin/clips/${clipId}`, { withCredentials: true });
+            toast.success('Clip deleted successfully.');
+            await fetchUserClips();
+        } catch (error) {
+            toast.error(`Failed to delete clip, ${error}`);
+        }
+    };
+
     if (isLoading)
         return (
             <div className='flex justify-center items-center p-6'>
@@ -146,7 +205,7 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                             </pre>
                         ) : (
                             <pre className='text-xs'>
-                                <Badge variant='secondary'>No</Badge>
+                                <Badge variant='outline'>No</Badge>
                             </pre>
                         )
                     }
@@ -165,7 +224,7 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                     label='Period End'
                     value={
                         details.currentPeriodEnd ? (
-                            <pre className='text-xs'> {new Date(details.currentPeriodEnd).toLocaleDateString()} </pre>
+                            <pre className='text-xs'>{new Date(details.currentPeriodEnd).toLocaleDateString()}</pre>
                         ) : null
                     }
                 />
@@ -216,7 +275,13 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                         </SelectContent>
                     </Select>
                 </div>
-                {details.isBanned && (
+
+                <Button variant='outline' className='self-end' onClick={fetchUserClips}>
+                    <Video className='mr-2 h-4 w-4' />
+                    {userClips ? 'Refresh Clips' : 'View User Clips'}
+                </Button>
+
+                {details.isBanned ? (
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant='outline' className='self-end'>
@@ -231,17 +296,138 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                                <AlertDialogCancel asChild>
-                                    <Button size='sm' variant='ghost' className='cursor-pointer'>
-                                        Cancel
-                                    </Button>
-                                </AlertDialogCancel>
-                                <Button onClick={handleUnban}>Yes, Unban</Button>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleUnban}>Yes, Unban</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                ) : (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant='outline' className='self-end' disabled={adminUser?.id === userId}>
+                                <Ban className='mr-2 h-4 w-4' /> Ban User
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Confirm Ban</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Are you sure you want to ban {details.username}? Their account will be suspended.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleBanUser}>Yes, Ban User</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
                 )}
+
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant='destructive' className='self-end' disabled={adminUser?.id === userId}>
+                            <Trash2 className='mr-2 h-4 w-4' /> Delete User
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Confirm Permanent Deletion</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This is irreversible. All of {details.username}&apos;s data, including clips and account
+                                info, will be permanently deleted.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={handleDeleteUser}
+                                className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                            >
+                                Yes, Delete User
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
+
+            {clipsLoading && (
+                <div className='flex justify-center items-center p-6'>
+                    <Loader2 className='animate-spin' />
+                </div>
+            )}
+            {userClips && (
+                <div className='pt-4 border-t'>
+                    <h3 className='text-lg font-semibold mb-2'>
+                        Clips by {details.username} ({userClips.length})
+                    </h3>
+                    {userClips.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>File Name</TableHead>
+                                    <TableHead>Size</TableHead>
+                                    <TableHead>Uploaded</TableHead>
+                                    <TableHead className='text-right'>Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {userClips.map((clip) => (
+                                    <TableRow key={clip.id}>
+                                        <TableCell className='font-medium truncate max-w-xs'>
+                                            <a
+                                                href={`/clip/${clip.id}`}
+                                                target='_blank'
+                                                rel='noopener noreferrer'
+                                                className='hover:underline flex items-center gap-2'
+                                            >
+                                                {clip.file_name}
+                                                <ExternalLink className='size-4 text-muted-foreground flex-shrink-0' />
+                                            </a>
+                                        </TableCell>
+                                        <TableCell>{formatBytes(clip.file_size)}</TableCell>
+                                        <TableCell>{new Date(clip.created_at).toLocaleDateString()}</TableCell>
+                                        <TableCell className='flex justify-end gap-2'>
+                                            <Button
+                                                size='icon'
+                                                variant='outline'
+                                                onClick={() =>
+                                                    navigator.clipboard.writeText(`${API_URL}/clip/${clip.id}`)
+                                                }
+                                            >
+                                                <Copy className='h-4 w-4' />
+                                            </Button>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button size='icon' variant='destructive'>
+                                                        <Trash2 className='h-4 w-4' />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Delete Clip?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This will permanently delete the clip &quot;{clip.file_name}
+                                                            &quot;. This action is irreversible.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteClip(clip.id)}>
+                                                            Delete
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                        <p className='text-muted-foreground'>This user has no clips.</p>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
