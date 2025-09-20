@@ -1,6 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import axios from 'axios';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@radix-ui/react-collapsible';
 import { UserDetailView } from '@/components/detailView';
@@ -71,7 +82,6 @@ const AdminPanel = () => {
     }, []);
 
     const handleRemoveVideo = async (token: string) => {
-        if (!window.confirm('Are you sure you want to remove this video?')) return;
         try {
             const response = await axios.get(`${API_URL}/admin/remove/${token}`, { withCredentials: true });
             toast.success(response.data);
@@ -82,7 +92,6 @@ const AdminPanel = () => {
     };
 
     const handleBanUser = async (token: string) => {
-        if (!window.confirm('Are you sure you want to ban this user and their IP?')) return;
         try {
             const response = await axios.get(`${API_URL}/admin/ban/${token}`, { withCredentials: true });
             toast.success(response.data);
@@ -93,7 +102,6 @@ const AdminPanel = () => {
     };
 
     const handleIgnoreReport = async (token: string) => {
-        if (!window.confirm('Are you sure you want to ignore this report?')) return;
         try {
             const response = await axios.get(`${API_URL}/admin/ignore/${token}`, { withCredentials: true });
             toast.success(response.data);
@@ -148,33 +156,81 @@ const AdminPanel = () => {
                                         </TableCell>
                                         <TableCell>{clip.uploader_username}</TableCell>
                                         <TableCell className='flex justify-end gap-2'>
-                                            <Button
-                                                size='sm'
-                                                variant='ghost'
-                                                className='cursor-pointer'
-                                                onClick={() => handleIgnoreReport(clip.report_token)}
-                                            >
-                                                <EyeOff className='mr-2 h-4 w-4' />
-                                                Ignore
-                                            </Button>
-                                            <Button
-                                                size='sm'
-                                                className='cursor-pointer'
-                                                variant='destructive'
-                                                onClick={() => handleRemoveVideo(clip.report_token)}
-                                            >
-                                                <Trash2 className='mr-2 h-4 w-4' />
-                                                Remove
-                                            </Button>
-                                            <Button
-                                                size='sm'
-                                                className='cursor-pointer'
-                                                variant='outline'
-                                                onClick={() => handleBanUser(clip.report_token)}
-                                            >
-                                                <Ban className='mr-2 h-4 w-4' />
-                                                Ban User
-                                            </Button>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button size='sm' variant='ghost' className='cursor-pointer'>
+                                                        <EyeOff className='mr-2 h-4 w-4' />
+                                                        Ignore
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Ban User?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            You are going to ignore this clip. This action is
+                                                            irreversible.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                            onClick={() => handleIgnoreReport(clip.report_token)}
+                                                        >
+                                                            Ignore
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button size='icon' variant='destructive'>
+                                                        <Trash2 className='h-4 w-4' />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Delete Clip?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This will permanently delete the clip &quot;{clip.file_name}
+                                                            &quot;. This action is irreversible.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                            onClick={() => handleRemoveVideo(clip.report_token)}
+                                                        >
+                                                            Delete
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button size='sm' className='cursor-pointer' variant='outline'>
+                                                        <Ban className='mr-2 h-4 w-4' />
+                                                        Ban User
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Ban User?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            You are going to ban user &quot;{clip.uploader_username}
+                                                            &quot;. This action is reversible*.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                            onClick={() => handleBanUser(clip.report_token)}
+                                                        >
+                                                            Ban User
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
                                         </TableCell>
                                     </TableRow>
                                 ))}
