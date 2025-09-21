@@ -68,15 +68,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
         try {
-            const response = await axios.get<{ user: UserProfile }>(`${API_URL}/api/me`, {
+            const response = await axios.get<UserProfile>(`${API_URL}/api/me`, {
                 withCredentials: true,
             });
 
-            if (response.data && response.data.user) {
-                if (response.data.user.is_banned) {
+            if (response.data) {
+                if (response.data.is_banned) {
                     await doLogout();
                 } else {
-                    setUser(response.data.user);
+                    setUser(response.data);
                 }
             } else {
                 setUser(null);
