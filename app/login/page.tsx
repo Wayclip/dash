@@ -22,7 +22,7 @@ const LoadingScreen = () => (
 const API_URL = 'https://wayclip.com';
 
 const LoginClientComponent = () => {
-    const { isAuthenticated, isLoading } = useAuth();
+    const { isAuthenticated, isLoading, refreshUser } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -115,7 +115,8 @@ const LoginClientComponent = () => {
             );
 
             if (response.status === 200 && response.data.success) {
-                window.location.href = '/dash';
+                await refreshUser();
+                router.push('/dash');
             } else if (response.data['2fa_required']) {
                 setTwoFAToken(response.data['2fa_token']);
                 setShow2FA(true);
@@ -155,7 +156,8 @@ const LoginClientComponent = () => {
             );
 
             if (response.data.success) {
-                window.location.href = '/dash';
+                await refreshUser();
+                router.push('/dash');
             }
         } catch (error) {
             handleErrorToast(error, 'Invalid 2FA code. Please try again.');
