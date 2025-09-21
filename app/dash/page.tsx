@@ -54,7 +54,7 @@ import {
 import axios from 'axios';
 
 const LoadingScreen = () => (
-    <div className='flex h-full min-h-[50vh] w-full items-center justify-center'>
+    <div className='flex h-full min-h-screen w-full items-center justify-center bg-background/40'>
         <div className='h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent'></div>
     </div>
 );
@@ -533,448 +533,427 @@ const DashboardPage = () => {
         }
     };
 
-    if (isLoading) {
+    if (isLoading || !isAuthenticated || !userData) {
         return <LoadingScreen />;
     }
 
-    if (isAuthenticated && userData) {
-        const userTierPlan = pricingPlans.find((p) => p.tierId === userData?.tier) ?? pricingPlans[0];
+    const userTierPlan = pricingPlans.find((p) => p.tierId === userData?.tier) ?? pricingPlans[0];
+    const storageLimitBytes = userData.storage_limit;
+    const storageUsedBytes = userData.storage_used;
+    const storageUsedGB = storageUsedBytes / (1024 * 1024 * 1024);
+    const storageLimitGB = storageLimitBytes > 0 ? storageLimitBytes / (1024 * 1024 * 1024) : 0;
+    const storageUsedPercentage = storageLimitBytes > 0 ? (storageUsedBytes / storageLimitBytes) * 100 : 0;
+    const isEmailVerified = userData.email_verified_at !== null && userData.email_verified_at !== undefined;
 
-        const storageLimitBytes = userData.storage_limit;
-        const storageUsedBytes = userData.storage_used;
-        const storageUsedGB = storageUsedBytes / (1024 * 1024 * 1024);
-        const storageLimitGB = storageLimitBytes > 0 ? storageLimitBytes / (1024 * 1024 * 1024) : 0;
-        const storageUsedPercentage = storageLimitBytes > 0 ? (storageUsedBytes / storageLimitBytes) * 100 : 0;
+    return (
+        <div className='flex w-full flex-col bg-background/40 pt-14 sm:pt-20'>
+            <main className='flex w-full flex-1 flex-col gap-8 p-4 sm:px-6 sm:py-0 max-w-6xl mx-auto'>
+                <header className='sm:py-4'>
+                    <h1 className='text-2xl font-semibold'>Dashboard</h1>
+                </header>
 
-        const isEmailVerified = userData.email_verified_at !== null && userData.email_verified_at !== undefined;
+                {userData.role === 'admin' && (
+                    <div className='mb-8'>
+                        <AdminPanel />
+                    </div>
+                )}
 
-        return (
-            <div className='flex w-full flex-col bg-background/40 pt-14 sm:pt-20'>
-                <main className='flex w-full flex-1 flex-col gap-8 p-4 sm:px-6 sm:py-0 max-w-6xl mx-auto'>
-                    <header className='sm:py-4'>
-                        <h1 className='text-2xl font-semibold'>Dashboard</h1>
+                <div className='flex flex-col gap-4'>
+                    <header>
+                        <h2 className='text-xl font-semibold'>Account Data</h2>
                     </header>
-
-                    {userData.role === 'admin' && (
-                        <div className='mb-8'>
-                            <AdminPanel />
-                        </div>
-                    )}
-
-                    <div className='flex flex-col gap-4'>
-                        <header>
-                            <h2 className='text-xl font-semibold'>Account Data</h2>
-                        </header>
-                        <div className='grid lg:grid-cols-3 gap-6'>
-                            <Card className='flex flex-col lg:col-span-2'>
-                                <CardHeader>
-                                    <CardTitle>Account Information</CardTitle>
-                                    <CardDescription>
-                                        Manage your account details and security settings.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className='space-y-6'>
-                                    <div className='flex flex-col sm:flex-row gap-6 sm:gap-12'>
-                                        <div className='flex items-center gap-4'>
-                                            <Avatar className='h-12 w-12'>
-                                                <AvatarImage src={userData.avatar_url ?? ''} alt='Avatar' />
-                                                <AvatarFallback>
-                                                    {userData.username.charAt(0).toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <p className='font-semibold text-lg'>{userData.username}</p>
-                                            </div>
+                    <div className='grid lg:grid-cols-3 gap-6'>
+                        <Card className='flex flex-col lg:col-span-2'>
+                            <CardHeader>
+                                <CardTitle>Account Information</CardTitle>
+                                <CardDescription>Manage your account details and security settings.</CardDescription>
+                            </CardHeader>
+                            <CardContent className='space-y-6'>
+                                <div className='flex flex-col sm:flex-row gap-6 sm:gap-12'>
+                                    <div className='flex items-center gap-4'>
+                                        <Avatar className='h-12 w-12'>
+                                            <AvatarImage src={userData.avatar_url ?? ''} alt='Avatar' />
+                                            <AvatarFallback>{userData.username.charAt(0).toUpperCase()}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className='font-semibold text-lg'>{userData.username}</p>
                                         </div>
+                                    </div>
 
-                                        {userData.email && (
-                                            <div className='space-y-1'>
-                                                <p className='text-sm font-medium'>Email</p>
-                                                <div className='flex items-center gap-2'>
-                                                    <p className='text-sm'>{userData.email}</p>
-                                                    <Badge variant={isEmailVerified ? 'default' : 'destructive'}>
-                                                        {isEmailVerified ? 'Verified' : 'Not Verified'}
-                                                    </Badge>
-                                                </div>
-                                            </div>
-                                        )}
-
+                                    {userData.email && (
                                         <div className='space-y-1'>
-                                            <p className='text-sm font-medium'>Two-Factor Authentication</p>
+                                            <p className='text-sm font-medium'>Email</p>
                                             <div className='flex items-center gap-2'>
-                                                <Badge
-                                                    variant={userData.two_factor_enabled ? 'default' : 'secondary'}
-                                                    className='flex items-center gap-1'
-                                                >
-                                                    {userData.two_factor_enabled ? (
-                                                        <ShieldCheck className='h-3 w-3' />
-                                                    ) : (
-                                                        <Shield className='h-3 w-3' />
-                                                    )}
-                                                    {userData.two_factor_enabled ? 'Enabled' : 'Disabled'}
+                                                <p className='text-sm'>{userData.email}</p>
+                                                <Badge variant={isEmailVerified ? 'default' : 'destructive'}>
+                                                    {isEmailVerified ? 'Verified' : 'Not Verified'}
                                                 </Badge>
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
 
-                                    <div className='space-y-3'>
-                                        <Label>Connected Accounts</Label>
-                                        <p className='text-sm text-muted-foreground'>
-                                            These are the services you can use to sign in.
-                                        </p>
-                                        <div className='space-y-2'>
-                                            {userData.connected_accounts.map((provider) => (
-                                                <div
-                                                    key={provider}
-                                                    className='flex items-center justify-between rounded-md border p-3'
-                                                >
-                                                    <div className='flex items-center gap-3'>
-                                                        {providerIcons[provider]}
-                                                        <span className='font-medium capitalize'>{provider}</span>
-                                                    </div>
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button
-                                                                variant='ghost'
-                                                                size='sm'
-                                                                disabled={userData.connected_accounts.length <= 1}
-                                                                className='text-xs cursor-pointer'
-                                                            >
-                                                                <Unplug className='mr-2 h-3 w-3' />
-                                                                Unlink
-                                                            </Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Unlink {provider}?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    Are you sure? You will no longer be able to log in
-                                                                    using this {provider} account.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel asChild>
-                                                                    <Button
-                                                                        size='sm'
-                                                                        variant='ghost'
-                                                                        className='cursor-pointer'
-                                                                    >
-                                                                        Cancel
-                                                                    </Button>
-                                                                </AlertDialogCancel>
+                                    <div className='space-y-1'>
+                                        <p className='text-sm font-medium'>Two-Factor Authentication</p>
+                                        <div className='flex items-center gap-2'>
+                                            <Badge
+                                                variant={userData.two_factor_enabled ? 'default' : 'secondary'}
+                                                className='flex items-center gap-1'
+                                            >
+                                                {userData.two_factor_enabled ? (
+                                                    <ShieldCheck className='h-3 w-3' />
+                                                ) : (
+                                                    <Shield className='h-3 w-3' />
+                                                )}
+                                                {userData.two_factor_enabled ? 'Enabled' : 'Disabled'}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className='space-y-3'>
+                                    <Label>Connected Accounts</Label>
+                                    <p className='text-sm text-muted-foreground'>
+                                        These are the services you can use to sign in.
+                                    </p>
+                                    <div className='space-y-2'>
+                                        {userData.connected_accounts.map((provider) => (
+                                            <div
+                                                key={provider}
+                                                className='flex items-center justify-between rounded-md border p-3'
+                                            >
+                                                <div className='flex items-center gap-3'>
+                                                    {providerIcons[provider]}
+                                                    <span className='font-medium capitalize'>{provider}</span>
+                                                </div>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button
+                                                            variant='ghost'
+                                                            size='sm'
+                                                            disabled={userData.connected_accounts.length <= 1}
+                                                            className='text-xs cursor-pointer'
+                                                        >
+                                                            <Unplug className='mr-2 h-3 w-3' />
+                                                            Unlink
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Unlink {provider}?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                Are you sure? You will no longer be able to log in using
+                                                                this {provider} account.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel asChild>
                                                                 <Button
-                                                                    onClick={() => handleUnlinkProvider(provider)}
+                                                                    size='sm'
+                                                                    variant='ghost'
                                                                     className='cursor-pointer'
                                                                 >
-                                                                    Continue
+                                                                    Cancel
                                                                 </Button>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </div>
-                                            ))}
-                                        </div>
+                                                            </AlertDialogCancel>
+                                                            <Button
+                                                                onClick={() => handleUnlinkProvider(provider)}
+                                                                className='cursor-pointer'
+                                                            >
+                                                                Continue
+                                                            </Button>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </div>
+                                        ))}
                                     </div>
-                                </CardContent>
-                                <CardFooter className='mt-auto flex flex-wrap gap-2 border-t pt-6'>
-                                    <Button variant='outline' onClick={logout} className='cursor-pointer'>
-                                        <LogOut className='mr-2 size-4' />
-                                        Sign Out
-                                    </Button>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
+                                </div>
+                            </CardContent>
+                            <CardFooter className='mt-auto flex flex-wrap gap-2 border-t pt-6'>
+                                <Button variant='outline' onClick={logout} className='cursor-pointer'>
+                                    <LogOut className='mr-2 size-4' />
+                                    Sign Out
+                                </Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant='outline' className='cursor-pointer'>
+                                            <LogOutIcon className='mr-2 size-4' />
+                                            Sign Out Other Devices
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Sign out everywhere else?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This will sign you out of all other active sessions on other browsers
+                                                and devices. Your current session will remain active.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <Button onClick={handleLogoutOtherDevices}>Continue</Button>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+
+                                {!userData.two_factor_enabled && (
+                                    <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
+                                        <DialogTrigger asChild>
+                                            <Button className='cursor-pointer'>
+                                                <Key className='mr-2 size-4' />
+                                                Enable 2FA
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className='sm:max-w-md'>
+                                            <DialogHeader>
+                                                <DialogTitle>Two-Factor Authentication</DialogTitle>
+                                                <DialogDescription>
+                                                    Secure your account by requiring a second verification step.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <TwoFactorSetup onSuccess={handle2FASuccess} />
+                                        </DialogContent>
+                                    </Dialog>
+                                )}
+                                {userData.connected_accounts.includes('email') && (
+                                    <Dialog open={showResetPasswordDialog} onOpenChange={setShowResetPasswordDialog}>
+                                        <DialogTrigger asChild>
                                             <Button variant='outline' className='cursor-pointer'>
-                                                <LogOutIcon className='mr-2 size-4' />
-                                                Sign Out Other Devices
+                                                <RefreshCcw className='mr-2 size-4' />
+                                                Reset Password
                                             </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Sign out everywhere else?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    This will sign you out of all other active sessions on other
-                                                    browsers and devices. Your current session will remain active.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <Button onClick={handleLogoutOtherDevices}>Continue</Button>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-
-                                    {!userData.two_factor_enabled && (
-                                        <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
-                                            <DialogTrigger asChild>
-                                                <Button className='cursor-pointer'>
-                                                    <Key className='mr-2 size-4' />
-                                                    Enable 2FA
+                                        </DialogTrigger>
+                                        <DialogContent className='sm:max-w-md'>
+                                            <DialogHeader>
+                                                <DialogTitle>Reset Your Password</DialogTitle>
+                                                <DialogDescription>
+                                                    Enter your email to receive a password reset link.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <ResetPasswordDialog onFinished={() => setShowResetPasswordDialog(false)} />
+                                        </DialogContent>
+                                    </Dialog>
+                                )}
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant='destructive' className='cursor-pointer'>
+                                            <Trash2 className='mr-2 size-4' />
+                                            Delete Account
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This action is irreversible. All your data, including your clips, will
+                                                be permanently deleted. This cannot be undone.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel asChild>
+                                                <Button size='sm' variant='ghost' className='cursor-pointer'>
+                                                    Cancel
                                                 </Button>
-                                            </DialogTrigger>
-                                            <DialogContent className='sm:max-w-md'>
-                                                <DialogHeader>
-                                                    <DialogTitle>Two-Factor Authentication</DialogTitle>
-                                                    <DialogDescription>
-                                                        Secure your account by requiring a second verification step.
-                                                    </DialogDescription>
-                                                </DialogHeader>
-                                                <TwoFactorSetup onSuccess={handle2FASuccess} />
-                                            </DialogContent>
-                                        </Dialog>
-                                    )}
-                                    {userData.connected_accounts.includes('email') && (
-                                        <Dialog
-                                            open={showResetPasswordDialog}
-                                            onOpenChange={setShowResetPasswordDialog}
-                                        >
-                                            <DialogTrigger asChild>
-                                                <Button variant='outline' className='cursor-pointer'>
-                                                    <RefreshCcw className='mr-2 size-4' />
-                                                    Reset Password
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent className='sm:max-w-md'>
-                                                <DialogHeader>
-                                                    <DialogTitle>Reset Your Password</DialogTitle>
-                                                    <DialogDescription>
-                                                        Enter your email to receive a password reset link.
-                                                    </DialogDescription>
-                                                </DialogHeader>
-                                                <ResetPasswordDialog
-                                                    onFinished={() => setShowResetPasswordDialog(false)}
-                                                />
-                                            </DialogContent>
-                                        </Dialog>
-                                    )}
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant='destructive' className='cursor-pointer'>
-                                                <Trash2 className='mr-2 size-4' />
-                                                Delete Account
+                                            </AlertDialogCancel>
+                                            <Button
+                                                variant='destructive'
+                                                onClick={handleDeleteAccount}
+                                                className='cursor-pointer'
+                                            >
+                                                Yes, delete my account
                                             </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    This action is irreversible. All your data, including your clips,
-                                                    will be permanently deleted. This cannot be undone.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel asChild>
-                                                    <Button size='sm' variant='ghost' className='cursor-pointer'>
-                                                        Cancel
-                                                    </Button>
-                                                </AlertDialogCancel>
-                                                <Button
-                                                    variant='destructive'
-                                                    onClick={handleDeleteAccount}
-                                                    className='cursor-pointer'
-                                                >
-                                                    Yes, delete my account
-                                                </Button>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </CardFooter>
-                            </Card>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </CardFooter>
+                        </Card>
 
-                            <Card className='flex flex-col'>
-                                <CardHeader>
-                                    <CardTitle className='flex items-center gap-2'>
-                                        <Clock className='size-5' />
-                                        Recent Activity
-                                    </CardTitle>
-                                    <CardDescription>Your last known login.</CardDescription>
-                                </CardHeader>
-                                <CardContent className='flex-1 flex items-center'>
-                                    {userData.last_login_at && userData.last_login_ip ? (
-                                        <div className='text-sm text-muted-foreground space-y-2'>
-                                            <div>
-                                                <p className='font-medium text-foreground'>Last Login Time</p>
-                                                <p>{new Date(userData.last_login_at).toLocaleString()}</p>
-                                            </div>
-                                            <div>
-                                                <p className='font-medium text-foreground'>IP Address</p>
-                                                <p>{userData.last_login_ip}</p>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <p className='text-sm text-muted-foreground'>
-                                            No recent login activity to show.
-                                        </p>
-                                    )}
-                                </CardContent>
-                                <CardFooter>
-                                    <p className='text-xs text-muted-foreground'>
-                                        If you don&apos;t recognize this activity, please reset your password.
-                                    </p>
-                                </CardFooter>
-                            </Card>
-                        </div>
-                    </div>
-
-                    <div className='flex flex-col gap-4'>
-                        <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className='text-base font-medium text-muted-foreground'>
-                                        Storage Usage
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className='space-y-4'>
-                                    <div className='flex items-baseline gap-2'>
-                                        <p className='text-4xl font-bold tracking-tight'>
-                                            {storageUsedGB.toFixed(2)} GB
-                                        </p>
-                                        <span className='text-muted-foreground'>
-                                            / {storageLimitGB > 0 ? `${storageLimitGB.toFixed(0)} GB` : '2 GB'} used
-                                        </span>
-                                    </div>
-                                    <Progress
-                                        value={storageUsedPercentage}
-                                        aria-label={`${storageUsedPercentage.toFixed(0)}% used`}
-                                    />
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className='text-base font-medium text-muted-foreground'>
-                                        Hosted Clips
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className='text-4xl font-bold tracking-tight'>{userData.clip_count}</p>
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        <Card>
+                        <Card className='flex flex-col'>
                             <CardHeader>
-                                <CardTitle>Your Clips</CardTitle>
-                                <CardDescription>Manage your uploaded clips.</CardDescription>
+                                <CardTitle className='flex items-center gap-2'>
+                                    <Clock className='size-5' />
+                                    Recent Activity
+                                </CardTitle>
+                                <CardDescription>Your last known login.</CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                {clipsLoading ? (
-                                    <div className='flex justify-center py-8'>
-                                        <div className='h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent' />
+                            <CardContent className='flex-1 flex items-center'>
+                                {userData.last_login_at && userData.last_login_ip ? (
+                                    <div className='text-sm text-muted-foreground space-y-2'>
+                                        <div>
+                                            <p className='font-medium text-foreground'>Last Login Time</p>
+                                            <p>{new Date(userData.last_login_at).toLocaleString()}</p>
+                                        </div>
+                                        <div>
+                                            <p className='font-medium text-foreground'>IP Address</p>
+                                            <p>{userData.last_login_ip}</p>
+                                        </div>
                                     </div>
                                 ) : (
-                                    <ClipsTable clips={clips} onDelete={handleDeleteClip} onCopy={handleCopyUrl} />
+                                    <p className='text-sm text-muted-foreground'>No recent login activity to show.</p>
                                 )}
+                            </CardContent>
+                            <CardFooter>
+                                <p className='text-xs text-muted-foreground'>
+                                    If you don&apos;t recognize this activity, please reset your password.
+                                </p>
+                            </CardFooter>
+                        </Card>
+                    </div>
+                </div>
+
+                <div className='flex flex-col gap-4'>
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className='text-base font-medium text-muted-foreground'>
+                                    Storage Usage
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className='space-y-4'>
+                                <div className='flex items-baseline gap-2'>
+                                    <p className='text-4xl font-bold tracking-tight'>{storageUsedGB.toFixed(2)} GB</p>
+                                    <span className='text-muted-foreground'>
+                                        / {storageLimitGB > 0 ? `${storageLimitGB.toFixed(0)} GB` : '2 GB'} used
+                                    </span>
+                                </div>
+                                <Progress
+                                    value={storageUsedPercentage}
+                                    aria-label={`${storageUsedPercentage.toFixed(0)}% used`}
+                                />
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className='text-base font-medium text-muted-foreground'>
+                                    Hosted Clips
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className='text-4xl font-bold tracking-tight'>{userData.clip_count}</p>
                             </CardContent>
                         </Card>
                     </div>
 
-                    <div className='flex flex-col gap-4 mb-8 mt-4'>
-                        <header>
-                            <h2 className='text-xl font-semibold'>Billing & Subscriptions</h2>
-                        </header>
-                        {userData.tier !== 'free' ? (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Your Subscription</CardTitle>
-                                    <CardDescription>
-                                        You are currently on the{' '}
-                                        <span className='font-semibold text-primary'>{userTierPlan.name}</span> plan.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className='text-sm text-muted-foreground'>
-                                        Manage your billing information, switch plans, or cancel your subscription at
-                                        any time through our secure billing portal.
-                                    </p>
-                                </CardContent>
-                                <CardFooter className='flex flex-wrap gap-2'>
-                                    <Button
-                                        onClick={handleManageSubscription}
-                                        disabled={isManagingSubscription}
-                                        className='cursor-pointer'
-                                    >
-                                        <ExternalLink className='mr-2 size-4' />
-                                        {isManagingSubscription ? 'Redirecting...' : 'Manage Billing'}
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-                        ) : (
-                            <header>
-                                <h2 className='text-xl font-semibold'>Manage Subscription</h2>
-                                <p className='text-muted-foreground'>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Your Clips</CardTitle>
+                            <CardDescription>Manage your uploaded clips.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {clipsLoading ? (
+                                <div className='flex justify-center py-8'>
+                                    <div className='h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent' />
+                                </div>
+                            ) : (
+                                <ClipsTable clips={clips} onDelete={handleDeleteClip} onCopy={handleCopyUrl} />
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div className='flex flex-col gap-4 mb-8 mt-4'>
+                    <header>
+                        <h2 className='text-xl font-semibold'>Billing & Subscriptions</h2>
+                    </header>
+                    {userData.tier !== 'free' ? (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Your Subscription</CardTitle>
+                                <CardDescription>
                                     You are currently on the{' '}
                                     <span className='font-semibold text-primary'>{userTierPlan.name}</span> plan.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <p className='text-sm text-muted-foreground'>
+                                    Manage your billing information, switch plans, or cancel your subscription at any
+                                    time through our secure billing portal.
                                 </p>
-                            </header>
-                        )}
-
-                        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-                            {pricingPlans.map((plan) => (
-                                <Card
-                                    key={plan.name}
-                                    className={cn(
-                                        'flex flex-col',
-                                        plan.isPopular && 'border-primary',
-                                        plan.tierId === userData.tier && 'ring-2 ring-primary',
-                                    )}
+                            </CardContent>
+                            <CardFooter className='flex flex-wrap gap-2'>
+                                <Button
+                                    onClick={handleManageSubscription}
+                                    disabled={isManagingSubscription}
+                                    className='cursor-pointer'
                                 >
-                                    <CardHeader>
-                                        <div className='flex justify-between items-center'>
-                                            <CardTitle>{plan.name}</CardTitle>
-                                            {plan.isPopular && <Badge>Most Popular</Badge>}
-                                        </div>
-                                        <CardDescription>{plan.description}</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className='flex-1 space-y-4'>
-                                        <div>
-                                            <span className='text-4xl font-bold'>{plan.price}</span>
-                                            <span className='text-muted-foreground'>{plan.priceFrequency}</span>
-                                        </div>
-                                        <ul className='space-y-2 text-sm'>
-                                            {plan.features.map((feature) => (
-                                                <li key={feature} className='flex items-center gap-2'>
-                                                    <Check className='size-4 text-primary' />
-                                                    <span className='text-muted-foreground'>{feature}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </CardContent>
-                                    <CardFooter>
-                                        {userData.tier === 'free' ? (
-                                            <Button
-                                                className='w-full cursor-pointer'
-                                                disabled={
-                                                    plan.tierId === userData.tier ||
-                                                    isUpgrading ||
-                                                    plan.tierId === 'free'
-                                                }
-                                                onClick={() => handleUpgrade(plan.apiId)}
-                                            >
-                                                {plan.tierId === userData.tier
-                                                    ? 'Current Plan'
-                                                    : isUpgrading
-                                                      ? 'Processing...'
-                                                      : 'Upgrade'}
-                                            </Button>
-                                        ) : (
-                                            <Button
-                                                className='w-full cursor-pointer'
-                                                disabled={plan.tierId === userData.tier}
-                                                onClick={handleManageSubscription}
-                                            >
-                                                {plan.tierId === userData.tier ? 'Current Plan' : 'Manage Plan'}
-                                            </Button>
-                                        )}
-                                    </CardFooter>
-                                </Card>
-                            ))}
-                        </div>
-                    </div>
-                </main>
-            </div>
-        );
-    }
+                                    <ExternalLink className='mr-2 size-4' />
+                                    {isManagingSubscription ? 'Redirecting...' : 'Manage Billing'}
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    ) : (
+                        <header>
+                            <h2 className='text-xl font-semibold'>Manage Subscription</h2>
+                            <p className='text-muted-foreground'>
+                                You are currently on the{' '}
+                                <span className='font-semibold text-primary'>{userTierPlan.name}</span> plan.
+                            </p>
+                        </header>
+                    )}
 
-    return null;
+                    <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+                        {pricingPlans.map((plan) => (
+                            <Card
+                                key={plan.name}
+                                className={cn(
+                                    'flex flex-col',
+                                    plan.isPopular && 'border-primary',
+                                    plan.tierId === userData.tier && 'ring-2 ring-primary',
+                                )}
+                            >
+                                <CardHeader>
+                                    <div className='flex justify-between items-center'>
+                                        <CardTitle>{plan.name}</CardTitle>
+                                        {plan.isPopular && <Badge>Most Popular</Badge>}
+                                    </div>
+                                    <CardDescription>{plan.description}</CardDescription>
+                                </CardHeader>
+                                <CardContent className='flex-1 space-y-4'>
+                                    <div>
+                                        <span className='text-4xl font-bold'>{plan.price}</span>
+                                        <span className='text-muted-foreground'>{plan.priceFrequency}</span>
+                                    </div>
+                                    <ul className='space-y-2 text-sm'>
+                                        {plan.features.map((feature) => (
+                                            <li key={feature} className='flex items-center gap-2'>
+                                                <Check className='size-4 text-primary' />
+                                                <span className='text-muted-foreground'>{feature}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </CardContent>
+                                <CardFooter>
+                                    {userData.tier === 'free' ? (
+                                        <Button
+                                            className='w-full cursor-pointer'
+                                            disabled={
+                                                plan.tierId === userData.tier || isUpgrading || plan.tierId === 'free'
+                                            }
+                                            onClick={() => handleUpgrade(plan.apiId)}
+                                        >
+                                            {plan.tierId === userData.tier
+                                                ? 'Current Plan'
+                                                : isUpgrading
+                                                  ? 'Processing...'
+                                                  : 'Upgrade'}
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            className='w-full cursor-pointer'
+                                            disabled={plan.tierId === userData.tier}
+                                            onClick={handleManageSubscription}
+                                        >
+                                            {plan.tierId === userData.tier ? 'Current Plan' : 'Manage Plan'}
+                                        </Button>
+                                    )}
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
 };
 
 export default DashboardPage;
