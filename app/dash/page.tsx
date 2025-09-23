@@ -522,7 +522,7 @@ const DashboardPage = () => {
 
     const handleLogoutOtherDevices = async () => {
         try {
-            const response = await axios.post(`${API_URL}/auth/logout-devices`, {}, { withCredentials: true });
+            const response = await axios.post(`${API_URL}/api/logout-devices`, {}, { withCredentials: true });
             toast.success(response.data.message || 'Successfully logged out other devices.');
         } catch (error) {
             if (isAxiosError(error) && error.response?.data?.message) {
