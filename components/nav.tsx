@@ -18,6 +18,15 @@ export const Navbar = () => {
                 <ul className='items-center hidden gap-2 sm:flex'>
                     <li>
                         <Link
+                            href='https://wayclip.com/'
+                            aria-label='Front Page'
+                            className='p-2 text-sm text-muted-foreground transition-colors hover:text-accent-foreground'
+                        >
+                            Front Page
+                        </Link>
+                    </li>
+                    <li>
+                        <Link
                             href='/dash'
                             aria-label='Dashboard'
                             className='p-2 text-sm text-muted-foreground transition-colors hover:text-accent-foreground'

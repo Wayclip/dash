@@ -553,7 +553,10 @@ const DashboardPage = () => {
                 </header>
 
                 {userData.role === 'admin' && (
-                    <div className='mb-8'>
+                    <div className='mb-8 flex flex-col gap-2'>
+                        <header>
+                            <h2 className='text-xl font-semibold'>Admin Panel</h2>
+                        </header>
                         <AdminPanel />
                     </div>
                 )}
@@ -674,28 +677,6 @@ const DashboardPage = () => {
                                     <LogOut className='mr-2 size-4' />
                                     Sign Out
                                 </Button>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant='outline' className='cursor-pointer'>
-                                            <LogOutIcon className='mr-2 size-4' />
-                                            Sign Out Other Devices
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Sign out everywhere else?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                This will sign you out of all other active sessions on other browsers
-                                                and devices. Your current session will remain active.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <Button onClick={handleLogoutOtherDevices}>Continue</Button>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-
                                 {!userData.two_factor_enabled && (
                                     <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
                                         <DialogTrigger asChild>
@@ -776,9 +757,9 @@ const DashboardPage = () => {
                                 </CardTitle>
                                 <CardDescription>Your last known login.</CardDescription>
                             </CardHeader>
-                            <CardContent className='flex-1 flex items-center'>
+                            <CardContent className='flex-1 flex flex-col'>
                                 {userData.last_login_at && userData.last_login_ip ? (
-                                    <div className='text-sm text-muted-foreground space-y-2'>
+                                    <div className='text-sm text-muted-foreground space-y-2 h-full'>
                                         <div>
                                             <p className='font-medium text-foreground'>Last Login Time</p>
                                             <p>{new Date(userData.last_login_at).toLocaleString()}</p>
@@ -787,68 +768,91 @@ const DashboardPage = () => {
                                             <p className='font-medium text-foreground'>IP Address</p>
                                             <p>{userData.last_login_ip}</p>
                                         </div>
+                                        <p className='mt-auto text-xs text-muted-foreground'>
+                                            If you don&apos;t recognize this activity, please reset your password.
+                                        </p>
                                     </div>
                                 ) : (
                                     <p className='text-sm text-muted-foreground'>No recent login activity to show.</p>
                                 )}
                             </CardContent>
-                            <CardFooter>
-                                <p className='text-xs text-muted-foreground'>
-                                    If you don&apos;t recognize this activity, please reset your password.
-                                </p>
+                            <CardFooter className='mt-auto flex flex-wrap gap-2 border-t pt-6'>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant='outline' className='cursor-pointer'>
+                                            <LogOutIcon className='mr-2 size-4' />
+                                            Sign Out Other Devices
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Sign out everywhere else?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This will sign you out of all other active sessions on other browsers
+                                                and devices. Your current session will remain active.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <Button onClick={handleLogoutOtherDevices}>Continue</Button>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </CardFooter>
                         </Card>
                     </div>
-                </div>
 
-                <div className='flex flex-col gap-4'>
-                    <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                    <div className='flex flex-col gap-4'>
+                        <div className='grid grid-cols-5 gap-6 w-full'>
+                            <Card className='col-span-4 w-full'>
+                                <CardHeader>
+                                    <CardTitle className='text-base font-medium text-muted-foreground'>
+                                        Storage Usage
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className='space-y-4'>
+                                    <div className='flex items-baseline gap-2'>
+                                        <p className='text-4xl font-bold tracking-tight'>
+                                            {storageUsedGB.toFixed(2)} GB
+                                        </p>
+                                        <span className='text-muted-foreground'>
+                                            / {storageLimitGB > 0 ? `${storageLimitGB.toFixed(0)} GB` : '2 GB'} used
+                                        </span>
+                                    </div>
+                                    <Progress
+                                        value={storageUsedPercentage}
+                                        aria-label={`${storageUsedPercentage.toFixed(0)}% used`}
+                                    />
+                                </CardContent>
+                            </Card>
+                            <Card className='col-span-1 w-full'>
+                                <CardHeader>
+                                    <CardTitle className='text-base font-medium text-muted-foreground'>
+                                        Hosted Clips
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className='text-4xl font-bold tracking-tight'>{userData.clip_count}</p>
+                                </CardContent>
+                            </Card>
+                        </div>
+
                         <Card>
                             <CardHeader>
-                                <CardTitle className='text-base font-medium text-muted-foreground'>
-                                    Storage Usage
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className='space-y-4'>
-                                <div className='flex items-baseline gap-2'>
-                                    <p className='text-4xl font-bold tracking-tight'>{storageUsedGB.toFixed(2)} GB</p>
-                                    <span className='text-muted-foreground'>
-                                        / {storageLimitGB > 0 ? `${storageLimitGB.toFixed(0)} GB` : '2 GB'} used
-                                    </span>
-                                </div>
-                                <Progress
-                                    value={storageUsedPercentage}
-                                    aria-label={`${storageUsedPercentage.toFixed(0)}% used`}
-                                />
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className='text-base font-medium text-muted-foreground'>
-                                    Hosted Clips
-                                </CardTitle>
+                                <CardTitle>Your Clips</CardTitle>
+                                <CardDescription>Manage your uploaded clips.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <p className='text-4xl font-bold tracking-tight'>{userData.clip_count}</p>
+                                {clipsLoading ? (
+                                    <div className='flex justify-center py-8'>
+                                        <div className='h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent' />
+                                    </div>
+                                ) : (
+                                    <ClipsTable clips={clips} onDelete={handleDeleteClip} onCopy={handleCopyUrl} />
+                                )}
                             </CardContent>
                         </Card>
                     </div>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Your Clips</CardTitle>
-                            <CardDescription>Manage your uploaded clips.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {clipsLoading ? (
-                                <div className='flex justify-center py-8'>
-                                    <div className='h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent' />
-                                </div>
-                            ) : (
-                                <ClipsTable clips={clips} onDelete={handleDeleteClip} onCopy={handleCopyUrl} />
-                            )}
-                        </CardContent>
-                    </Card>
                 </div>
 
                 <div className='flex flex-col gap-4 mb-8 mt-4'>
@@ -890,8 +894,7 @@ const DashboardPage = () => {
                             </p>
                         </header>
                     )}
-
-                    <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+                    <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-16'>
                         {pricingPlans.map((plan) => (
                             <Card
                                 key={plan.name}

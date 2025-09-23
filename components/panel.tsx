@@ -115,19 +115,26 @@ const AdminPanel = () => {
     if (!data) return <p>Could not load admin data.</p>;
 
     return (
-        <div className='flex flex-col gap-8'>
+        <div className='flex flex-col gap-4'>
             <Card>
                 <CardHeader>
-                    <CardTitle className='flex items-center gap-2'>
-                        <ShieldAlert /> Admin Panel
-                    </CardTitle>
+                    <CardTitle className='flex items-center gap-2'>Dashboard Data</CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <p className='text-sm text-muted-foreground'>Total Cloud Storage Used</p>
-                    <p className='text-3xl font-bold'>{formatBytes(data.total_data_usage)}</p>
+                <CardContent className='flex flex-row gap-20'>
+                    <div className='flex flex-col gap-1'>
+                        <p className='text-sm text-muted-foreground'>Total Storage Used</p>
+                        <p className='text-3xl font-bold'>{formatBytes(data.total_data_usage)}</p>
+                    </div>
+                    <div className='flex flex-col gap-1'>
+                        <p className='text-sm text-muted-foreground'>Total Users</p>
+                        <p className='text-3xl font-bold'>{data.users.length}</p>
+                    </div>
+                    <div className='flex flex-col gap-1'>
+                        <p className='text-sm text-muted-foreground'>Active Reports</p>
+                        <p className='text-3xl font-bold'>{data.reported_clips.length}</p>
+                    </div>
                 </CardContent>
             </Card>
-
             <Card>
                 <CardHeader>
                     <CardTitle>Reported Clips</CardTitle>

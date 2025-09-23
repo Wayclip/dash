@@ -75,6 +75,23 @@ export default function RootLayout({
                                                     Terms Of Service
                                                 </a>
                                             </li>
+
+                                            <li>
+                                                <a
+                                                    href='https://wayclip.com/return-policy'
+                                                    className='hover:text-foreground transition-colors'
+                                                >
+                                                    Return Policy
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a
+                                                    href='https://wayclip.com/support'
+                                                    className='hover:text-foreground transition-colors'
+                                                >
+                                                    Support
+                                                </a>
+                                            </li>
                                         </ul>
                                     </div>
                                     <div>

@@ -375,7 +375,7 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                                     <TableRow key={clip.id}>
                                         <TableCell className='font-medium truncate max-w-xs'>
                                             <a
-                                                href={`/clip/${clip.id}`}
+                                                href={`${API_URL}/clip/${clip.id}`}
                                                 target='_blank'
                                                 rel='noopener noreferrer'
                                                 className='hover:underline flex items-center gap-2'
