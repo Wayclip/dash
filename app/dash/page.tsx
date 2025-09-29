@@ -938,7 +938,7 @@ const DashboardPage = () => {
                                                 ? 'Current Plan'
                                                 : isUpgrading
                                                   ? 'Processing...'
-                                                  : 'Upgrade'}
+                                                  : 'Manage plan'}
                                         </Button>
                                     ) : (
                                         <Button
