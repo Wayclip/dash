@@ -56,35 +56,32 @@ export const PaymentVerificationClient = () => {
     }, [isLoading, user, initialTier, searchParams]);
 
     useEffect(() => {
-        if (status !== 'success' || initialTier === undefined) {
+        if (status !== 'success' || !user || initialTier === undefined) {
             return;
         }
 
-        let attempts = 0;
-        const maxAttempts = 5;
+        if (user.tier !== initialTier) {
+            const redirectTimer = setTimeout(() => {
+                router.replace('/dash');
+            }, 2000);
 
-        const pollForUpdate = async () => {
-            await refreshUser();
-            attempts++;
+            return () => clearTimeout(redirectTimer);
+        }
 
-            if (user && user.tier !== initialTier) {
-                clearInterval(pollInterval);
-                setTimeout(() => {
-                    router.replace('/dash');
-                }, 2000);
-            } else if (attempts >= maxAttempts) {
-                clearInterval(pollInterval);
-                setTimeout(() => {
-                    router.replace('/dash');
-                }, 2000);
-            }
+        const pollInterval = setInterval(() => {
+            refreshUser();
+        }, 2000);
+
+        const maxWaitTimer = setTimeout(() => {
+            clearInterval(pollInterval);
+            router.replace('/dash');
+        }, 10000);
+
+        return () => {
+            clearInterval(pollInterval);
+            clearTimeout(maxWaitTimer);
         };
-
-        pollForUpdate();
-        const pollInterval = setInterval(pollForUpdate, 2000);
-
-        return () => clearInterval(pollInterval);
-    }, [status, initialTier, refreshUser, router, user]);
+    }, [status, user, initialTier, refreshUser, router]);
 
     const renderContent = () => {
         switch (status) {
@@ -104,7 +101,7 @@ export const PaymentVerificationClient = () => {
                         <XCircle className='h-16 w-16 text-destructive' />
                         <CardTitle className='mt-4 text-2xl'>Verification Failed</CardTitle>
                         <CardDescription>
-                            Invalid session. Please check your account or contact support.
+                            Invalid session. Please check your account or contact support via support@wayclip.com.
                         </CardDescription>
                     </>
                 );
