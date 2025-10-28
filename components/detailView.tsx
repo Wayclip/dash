@@ -21,18 +21,16 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Loader2, Ban, Trash2, Video, ExternalLink, Copy } from 'lucide-react';
 import { useAuth } from '@/contexts/authContext';
-
-const API_URL = 'https://wayclip.com';
+import { getPaymentInfo, ParsedPaymentInfo } from '@/lib/utils';
 
 type UserRole = 'user' | 'admin';
-type SubscriptionTier = 'free' | 'tier1' | 'tier2' | 'tier3';
 
 interface FullUserDetails {
     id: string;
     username: string;
     email: string | null;
     avatarUrl: string | null;
-    tier: SubscriptionTier;
+    tier: string;
     role: UserRole;
     isBanned: boolean;
     createdAt: string;
@@ -68,24 +66,28 @@ const formatBytes = (bytes: number, decimals = 2) => {
 };
 
 export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDataChange: () => void }) => {
+    const api_url = process.env.NEXT_PUBLIC_API_URL;
     const { user: adminUser } = useAuth();
     const [details, setDetails] = useState<FullUserDetails | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [userClips, setUserClips] = useState<UserClip[] | null>(null);
     const [clipsLoading, setClipsLoading] = useState(false);
+    const [paymentInfo, setPaymentInfo] = useState<ParsedPaymentInfo | null>(null);
 
     const fetchDetails = useCallback(async () => {
         try {
-            const response = await axios.get<FullUserDetails>(`${API_URL}/admin/users/${userId}`, {
+            const response = await axios.get<FullUserDetails>(`${api_url}/admin/users/${userId}`, {
                 withCredentials: true,
             });
+            const paymentReponse = await getPaymentInfo();
             setDetails(response.data);
+            setPaymentInfo(paymentReponse);
         } catch (error) {
             toast.error(`Failed to fetch user details, ${error}`);
         } finally {
             setIsLoading(false);
         }
-    }, [userId]);
+    }, [userId, api_url]);
 
     useEffect(() => {
         fetchDetails();
@@ -110,35 +112,35 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
             return;
         }
         handleAction(
-            () => axios.post(`${API_URL}/admin/users/${userId}/role`, { role: role }, { withCredentials: true }),
+            () => axios.post(`${api_url}/admin/users/${userId}/role`, { role: role }, { withCredentials: true }),
             'User role updated.',
         );
     };
 
-    const handleUpdateTier = (tier: SubscriptionTier) => {
+    const handleUpdateTier = (tier: string) => {
         handleAction(
-            () => axios.post(`${API_URL}/admin/users/${userId}/tier`, { tier }, { withCredentials: true }),
+            () => axios.post(`${api_url}/admin/users/${userId}/tier`, { tier }, { withCredentials: true }),
             'User tier manually updated.',
         );
     };
 
     const handleUnban = () => {
         handleAction(
-            () => axios.post(`${API_URL}/admin/users/${userId}/unban`, {}, { withCredentials: true }),
+            () => axios.post(`${api_url}/admin/users/${userId}/unban`, {}, { withCredentials: true }),
             'User has been unbanned.',
         );
     };
 
     const handleBanUser = () => {
         handleAction(
-            () => axios.post(`${API_URL}/admin/users/${userId}/ban`, {}, { withCredentials: true }),
+            () => axios.post(`${api_url}/admin/users/${userId}/ban`, {}, { withCredentials: true }),
             'User has been banned.',
         );
     };
 
     const handleDeleteUser = () => {
         handleAction(
-            () => axios.delete(`${API_URL}/admin/users/${userId}`, { withCredentials: true }),
+            () => axios.delete(`${api_url}/admin/users/${userId}`, { withCredentials: true }),
             'User has been permanently deleted.',
         );
     };
@@ -146,7 +148,7 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
     const fetchUserClips = async () => {
         setClipsLoading(true);
         try {
-            const response = await axios.get<UserClip[]>(`${API_URL}/admin/users/${userId}/clips`, {
+            const response = await axios.get<UserClip[]>(`${api_url}/admin/users/${userId}/clips`, {
                 withCredentials: true,
             });
             setUserClips(response.data);
@@ -159,7 +161,7 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
 
     const handleDeleteClip = async (clipId: string) => {
         try {
-            await axios.delete(`${API_URL}/admin/clips/${clipId}`, { withCredentials: true });
+            await axios.delete(`${api_url}/admin/clips/${clipId}`, { withCredentials: true });
             toast.success('Clip deleted successfully.');
             await fetchUserClips();
         } catch (error) {
@@ -260,18 +262,16 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                 </div>
                 <div className='space-y-2'>
                     <Label>Change Tier (Manual)</Label>
-                    <Select
-                        onValueChange={(value: SubscriptionTier) => handleUpdateTier(value)}
-                        defaultValue={details.tier}
-                    >
+                    <Select onValueChange={(value: string) => handleUpdateTier(value)} defaultValue={details.tier}>
                         <SelectTrigger className='w-[180px]'>
                             <SelectValue placeholder='Select tier' />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value='free'>Free</SelectItem>
-                            <SelectItem value='tier1'>Basic (Tier 1)</SelectItem>
-                            <SelectItem value='tier2'>Plus (Tier 2)</SelectItem>
-                            <SelectItem value='tier3'>Pro (Tier 3)</SelectItem>
+                            {paymentInfo?.active_tiers.map((v, i) => (
+                                <SelectItem value={v.name.toLowerCase()} key={i}>
+                                    {v.name}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -375,7 +375,7 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                                     <TableRow key={clip.id}>
                                         <TableCell className='font-medium truncate max-w-xs'>
                                             <a
-                                                href={`${API_URL}/clip/${clip.id}`}
+                                                href={`${api_url}/clip/${clip.id}`}
                                                 target='_blank'
                                                 rel='noopener noreferrer'
                                                 className='hover:underline flex items-center gap-2'
@@ -391,7 +391,7 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                                                 size='icon'
                                                 variant='outline'
                                                 onClick={() =>
-                                                    navigator.clipboard.writeText(`${API_URL}/clip/${clip.id}`)
+                                                    navigator.clipboard.writeText(`${api_url}/clip/${clip.id}`)
                                                 }
                                             >
                                                 <Copy className='h-4 w-4' />

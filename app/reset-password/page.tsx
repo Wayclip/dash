@@ -10,30 +10,68 @@ import { toast } from 'sonner';
 import axios, { isAxiosError } from 'axios';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { getAuthInfo, AuthInfo } from '@/lib/utils';
 
-const API_URL = 'https://wayclip.com';
+const InfoCard = ({
+    title,
+    description,
+    buttonText,
+    buttonHref,
+}: {
+    title: string;
+    description: string;
+    buttonText: string;
+    buttonHref: string;
+}) => (
+    <Card className='w-full max-w-sm'>
+        <CardHeader>
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Button asChild className='w-full'>
+                <Link href={buttonHref}>{buttonText}</Link>
+            </Button>
+        </CardContent>
+    </Card>
+);
 
 const ResetPasswordClientComponent = () => {
+    const api_url = process.env.NEXT_PUBLIC_API_URL;
     const router = useRouter();
     const searchParams = useSearchParams();
     const token = searchParams.get('token');
 
+    const [authInfo, setAuthInfo] = useState<AuthInfo | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState('');
 
     useEffect(() => {
-        if (!token) {
-            setError('No reset token found. Please request a new password reset link.');
-        }
-    }, [token]);
+        const fetchAuthSettings = async () => {
+            try {
+                const info = await getAuthInfo();
+                setAuthInfo(info);
+            } catch (error) {
+                console.error('Failed to fetch auth settings:', error);
+                toast.error('Could not load page settings. Please try again later.');
+                setAuthInfo(null);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchAuthSettings();
+    }, []);
 
     const handleErrorToast = (error: unknown, defaultMessage: string) => {
         if (isAxiosError(error) && error.response?.data) {
             const serverMessage = error.response.data;
             if (typeof serverMessage === 'string' && serverMessage.length > 0) {
                 toast.error(serverMessage);
+            } else if (serverMessage.message && typeof serverMessage.message === 'string') {
+                toast.error(serverMessage.message);
             } else {
                 toast.error(defaultMessage);
             }
@@ -59,11 +97,11 @@ const ResetPasswordClientComponent = () => {
 
         setIsSubmitting(true);
         try {
-            const response = await axios.post(`${API_URL}/auth/reset-password`, {
+            const response = await axios.post(`${api_url}/auth/reset-password`, {
                 token,
                 password,
             });
-            toast.success(response.data.message);
+            toast.success(response.data.message || 'Your password has been reset successfully.');
             router.push('/login?reset_success=true');
         } catch (err) {
             handleErrorToast(err, 'Failed to reset password. The link may have expired.');
@@ -73,19 +111,29 @@ const ResetPasswordClientComponent = () => {
         }
     };
 
-    if (error) {
+    if (isLoading) {
+        return null;
+    }
+
+    if (!authInfo || !authInfo.email_auth_enabled) {
         return (
-            <Card className='w-full max-w-sm'>
-                <CardHeader>
-                    <CardTitle>Invalid Link</CardTitle>
-                    <CardDescription>{error}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button asChild className='w-full'>
-                        <Link href='/login'>Return to Login</Link>
-                    </Button>
-                </CardContent>
-            </Card>
+            <InfoCard
+                title='Feature Disabled'
+                description='Password reset via email is not enabled. Please contact support if you need assistance.'
+                buttonText='Return to Login'
+                buttonHref='/login'
+            />
+        );
+    }
+
+    if (!token) {
+        return (
+            <InfoCard
+                title='Invalid Link'
+                description='No reset token found. Please request a new password reset link from the login page.'
+                buttonText='Return to Login'
+                buttonHref='/login'
+            />
         );
     }
 
@@ -120,6 +168,7 @@ const ResetPasswordClientComponent = () => {
                         />
                     </div>
                     <Button type='submit' className='w-full' disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
                         {isSubmitting ? 'Resetting...' : 'Reset Password'}
                     </Button>
                 </form>

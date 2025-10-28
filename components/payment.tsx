@@ -5,15 +5,25 @@ import { useAuth } from '@/contexts/authContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
-import { SubscriptionTier } from '@/contexts/authContext';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getPaymentInfo, ParsedPaymentInfo } from '@/lib/utils';
 
 export const PaymentVerificationClient = () => {
+    const api_url = process.env.NEXT_PUBLIC_API_URL;
     const { user, refreshUser, isLoading } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
     const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
-    const [initialTier, setInitialTier] = useState<SubscriptionTier | undefined>(undefined);
+    const [initialTier, setInitialTier] = useState<string | undefined>(undefined);
+    const [paymentInfo, setPaymentInfo] = useState<ParsedPaymentInfo | null>(null);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const payment = await getPaymentInfo();
+            setPaymentInfo(payment);
+        };
+        fetchData();
+    }, []);
 
     useEffect(() => {
         if (user && initialTier === undefined) {
@@ -32,12 +42,17 @@ export const PaymentVerificationClient = () => {
             return;
         }
 
+        if (!paymentInfo?.payments_enabled) {
+            setStatus('error');
+            console.error('Payments are disabled');
+            return;
+        }
+
         const verifyStripeSession = async () => {
             try {
-                const response = await axios.get(
-                    `https://wayclip.com/api/checkout/verify-session?session_id=${sessionId}`,
-                    { withCredentials: true },
-                );
+                const response = await axios.get(`${api_url}/api/checkout/verify-session?session_id=${sessionId}`, {
+                    withCredentials: true,
+                });
 
                 if (response.data.status === 'paid') {
                     setStatus('success');
@@ -53,7 +68,7 @@ export const PaymentVerificationClient = () => {
         };
 
         verifyStripeSession();
-    }, [isLoading, user, initialTier, searchParams]);
+    }, [isLoading, user, initialTier, searchParams, api_url, paymentInfo]);
 
     useEffect(() => {
         if (status !== 'success' || !user || initialTier === undefined) {

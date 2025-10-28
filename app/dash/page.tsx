@@ -1,18 +1,7 @@
 'use client';
 
-import {
-    Copy,
-    Trash2,
-    ExternalLink,
-    Check,
-    LogOut,
-    Unplug,
-    Shield,
-    ShieldCheck,
-    Key,
-    Clock,
-    LogOutIcon,
-} from 'lucide-react';
+import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug, Shield, ShieldCheck, Key } from 'lucide-react';
+import { InputOTP, InputOTPSlot, InputOTPGroup, InputOTPSeparator } from '@/components/ui/input-otp';
 import AdminPanel from '@/components/panel';
 import { toast } from 'sonner';
 import { FormEvent } from 'react';
@@ -59,57 +48,12 @@ const LoadingScreen = () => (
     </div>
 );
 
-const API_URL = 'https://wayclip.com';
-
 const providerIcons: { [key: string]: React.ReactNode } = {
     github: <BsGithub className='h-5 w-5' />,
     google: <BsGoogle className='h-5 w-5' />,
     discord: <BsDiscord className='h-5 w-5' />,
     email: <span className='text-xl font-bold'>@</span>,
 };
-
-const pricingPlans = [
-    {
-        tierId: 'free',
-        apiId: null,
-        name: 'Free',
-        price: '$0',
-        priceFrequency: '',
-        description: 'Perfect for trying out cloud sharing.',
-        features: ['2GB cloud storage', 'Unlimited local recordings', 'Basic sharing links'],
-        isPopular: false,
-    },
-    {
-        tierId: 'tier1',
-        apiId: 'basic',
-        name: 'Basic',
-        price: '$3.99',
-        priceFrequency: '/ month',
-        description: 'Great for regular content creators.',
-        features: ['50GB cloud storage', 'All features from Free'],
-        isPopular: true,
-    },
-    {
-        tierId: 'tier2',
-        apiId: 'plus',
-        name: 'Plus',
-        price: '$6.99',
-        priceFrequency: '/ month',
-        description: 'For power users and teams.',
-        features: ['200GB cloud storage', 'All features from Basic'],
-        isPopular: false,
-    },
-    {
-        tierId: 'tier3',
-        apiId: 'pro',
-        name: 'Pro',
-        price: '$14.99',
-        priceFrequency: '/ month',
-        description: 'For professional workflows.',
-        features: ['1TB cloud storage', 'All features from Plus'],
-        isPopular: false,
-    },
-];
 
 const formatBytes = (bytes: number, decimals = 2) => {
     if (!+bytes) return '0 Bytes';
@@ -129,6 +73,7 @@ const ClipsTable = ({
     onDelete: (id: string) => void;
     onCopy: (url: string) => void;
 }) => {
+    const api_url = process.env.NEXT_PUBLIC_API_URL;
     if (!clips || clips.length === 0) {
         return <p className='text-muted-foreground'>You haven&apos;t uploaded any clips yet.</p>;
     }
@@ -145,7 +90,7 @@ const ClipsTable = ({
             </TableHeader>
             <TableBody>
                 {clips.map((clip) => {
-                    const clipUrl = `${API_URL}/clip/${clip.id}`;
+                    const clipUrl = `${api_url}/clip/${clip.id}`;
                     return (
                         <TableRow key={clip.id}>
                             <TableCell className='font-medium truncate max-w-xs'>
@@ -217,6 +162,7 @@ const ClipsTable = ({
 };
 
 const ResetPasswordDialog = ({ onFinished }: { onFinished: () => void }) => {
+    const api_url = process.env.NEXT_PUBLIC_API_URL;
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [email, setEmail] = useState('');
 
@@ -224,7 +170,7 @@ const ResetPasswordDialog = ({ onFinished }: { onFinished: () => void }) => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const response = await axios.post(`${API_URL}/auth/forgot-password`, { email });
+            const response = await axios.post(`${api_url}/auth/forgot-password`, { email });
             toast.success(response.data.message);
             onFinished();
         } catch (error) {
@@ -259,6 +205,7 @@ const ResetPasswordDialog = ({ onFinished }: { onFinished: () => void }) => {
 };
 
 const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
+    const api_url = process.env.NEXT_PUBLIC_API_URL;
     const [step, setStep] = useState<'setup' | 'verify'>('setup');
     const [secret, setSecret] = useState('');
     const [qrCodeUrl, setQrCodeUrl] = useState('');
@@ -269,7 +216,7 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
     const initiate2FA = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.post(`${API_URL}/api/2fa/setup`, {}, { withCredentials: true });
+            const response = await axios.post(`${api_url}/api/2fa/setup`, {}, { withCredentials: true });
             setSecret(response.data.secret);
             setQrCodeUrl(response.data.qr_code_base64);
             setStep('verify');
@@ -285,7 +232,7 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
         setIsLoading(true);
         try {
             const response = await axios.post(
-                `${API_URL}/api/2fa/verify`,
+                `${api_url}/api/2fa/verify`,
                 {
                     secret: secret,
                     code: verificationCode,
@@ -359,15 +306,25 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
                 </div>
                 <div className='space-y-2'>
                     <Label htmlFor='verification-code'>Enter Verification Code</Label>
-                    <Input
-                        id='verification-code'
-                        type='text'
-                        placeholder='000000'
-                        maxLength={6}
-                        value={verificationCode}
-                        onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        className='text-center text-lg tracking-widest'
-                    />
+                    <div className='flex justify-center'>
+                        <InputOTP
+                            maxLength={6}
+                            value={verificationCode}
+                            onChange={(value) => setVerificationCode(value)}
+                        >
+                            <InputOTPGroup>
+                                <InputOTPSlot index={0} />
+                                <InputOTPSlot index={1} />
+                                <InputOTPSlot index={2} />
+                            </InputOTPGroup>
+                            <InputOTPSeparator />
+                            <InputOTPGroup>
+                                <InputOTPSlot index={3} />
+                                <InputOTPSlot index={4} />
+                                <InputOTPSlot index={5} />
+                            </InputOTPGroup>
+                        </InputOTP>
+                    </div>
                 </div>
                 <Button
                     onClick={verify2FA}
@@ -397,6 +354,7 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
 };
 
 const DashboardPage = () => {
+    const api_url = process.env.NEXT_PUBLIC_API_URL;
     const { isAuthenticated, isLoading, user: userData, logout, refreshUser } = useAuth();
     const router = useRouter();
     const [clips, setClips] = useState<Clip[]>([]);
@@ -417,7 +375,7 @@ const DashboardPage = () => {
             if (isAuthenticated) {
                 try {
                     setClipsLoading(true);
-                    const response = await axios.get<Clip[]>(`${API_URL}/api/clips/index`, { withCredentials: true });
+                    const response = await axios.get<Clip[]>(`${api_url}/api/clips/index`, { withCredentials: true });
                     setClips(response.data);
                 } catch (error) {
                     console.error('Failed to fetch clips:', error);
@@ -429,11 +387,11 @@ const DashboardPage = () => {
         };
 
         fetchClips();
-    }, [isAuthenticated]);
+    }, [isAuthenticated, api_url]);
 
     const handleUnlinkProvider = async (provider: string) => {
         try {
-            await axios.delete(`${API_URL}/api/oauth/unlink/${provider}`, { withCredentials: true });
+            await axios.delete(`${api_url}/api/oauth/unlink/${provider}`, { withCredentials: true });
             toast.success(`${provider.charAt(0).toUpperCase() + provider.slice(1)} account unlinked successfully.`);
             await refreshUser();
         } catch (error) {
@@ -448,7 +406,7 @@ const DashboardPage = () => {
 
     const handleDeleteAccount = async () => {
         try {
-            const response = await axios.delete(`${API_URL}/api/account`, { withCredentials: true });
+            const response = await axios.delete(`${api_url}/api/account`, { withCredentials: true });
             toast.success(response.data.message || 'Your account has been scheduled for deletion.');
             logout();
         } catch (error) {
@@ -463,7 +421,7 @@ const DashboardPage = () => {
 
     const handleDeleteClip = async (clipId: string) => {
         try {
-            await axios.delete(`${API_URL}/api/clip/${clipId}`, { withCredentials: true });
+            await axios.delete(`${api_url}/api/clip/${clipId}`, { withCredentials: true });
             setClips((prevClips) => prevClips.filter((clip) => clip.id !== clipId));
             toast.success('Clip deleted successfully.');
             await refreshUser();
@@ -477,7 +435,7 @@ const DashboardPage = () => {
         if (!apiId) return;
         setIsUpgrading(true);
         try {
-            const response = await axios.post(`${API_URL}/api/checkout/${apiId}`, {}, { withCredentials: true });
+            const response = await axios.post(`${api_url}/api/checkout/${apiId}`, {}, { withCredentials: true });
             const { url } = response.data;
             if (url) {
                 window.location.href = url;
@@ -495,7 +453,7 @@ const DashboardPage = () => {
     const handleManageSubscription = async () => {
         setIsManagingSubscription(true);
         try {
-            const response = await axios.post(`${API_URL}/api/customer-portal`, {}, { withCredentials: true });
+            const response = await axios.post(`${api_url}/api/customer-portal`, {}, { withCredentials: true });
             const { url } = response.data;
             if (url) {
                 window.location.href = url;
@@ -520,18 +478,18 @@ const DashboardPage = () => {
         refreshUser();
     };
 
-    const handleLogoutOtherDevices = async () => {
-        try {
-            const response = await axios.post(`${API_URL}/api/logout-devices`, {}, { withCredentials: true });
-            toast.success(response.data.message || 'Successfully logged out other devices.');
-        } catch (error) {
-            if (isAxiosError(error) && error.response?.data?.message) {
-                toast.error(error.response.data.message);
-            } else {
-                toast.error('Failed to log out other devices.');
-            }
-        }
-    };
+    // const handleLogoutOtherDevices = async () => {
+    //     try {
+    //         const response = await axios.post(`${api_url}/api/logout-devices`, {}, { withCredentials: true });
+    //         toast.success(response.data.message || 'Successfully logged out other devices.');
+    //     } catch (error) {
+    //         if (isAxiosError(error) && error.response?.data?.message) {
+    //             toast.error(error.response.data.message);
+    //         } else {
+    //             toast.error('Failed to log out other devices.');
+    //         }
+    //     }
+    // };
 
     if (isLoading || !isAuthenticated || !userData) {
         return <LoadingScreen />;
@@ -566,7 +524,7 @@ const DashboardPage = () => {
                         <h2 className='text-xl font-semibold'>Account Data</h2>
                     </header>
                     <div className='grid lg:grid-cols-3 gap-6'>
-                        <Card className='flex flex-col lg:col-span-2'>
+                        <Card className='flex flex-col'>
                             <CardHeader>
                                 <CardTitle>Account Information</CardTitle>
                                 <CardDescription>Manage your account details and security settings.</CardDescription>
@@ -748,7 +706,8 @@ const DashboardPage = () => {
                                 </AlertDialog>
                             </CardFooter>
                         </Card>
-
+                        {/*
+                        TODO: Rework to actually be useful, this is just bs
                         <Card className='flex flex-col'>
                             <CardHeader>
                                 <CardTitle className='flex items-center gap-2'>
@@ -799,7 +758,7 @@ const DashboardPage = () => {
                                     </AlertDialogContent>
                                 </AlertDialog>
                             </CardFooter>
-                        </Card>
+                        </Card> */}
                     </div>
 
                     <div className='flex flex-col gap-4'>
