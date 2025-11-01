@@ -14,15 +14,24 @@ export type AppInfo = {
 };
 
 export async function getAppInfo(): Promise<AppInfo> {
-    const res = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8000'}/get-app-info`);
-    if (!res.ok) throw new Error('Failed to fetch app info');
-    return res.json();
+    return {
+        backend_url: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+        frontend_url: process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3003',
+        app_name: process.env.NEXT_PUBLIC_APP_NAME || 'Wayclip',
+        default_avatar_url: process.env.NEXT_PUBLIC_DEFAULT_AVATAR || '',
+        upload_limit_bytes: Number(process.env.NEXT_PUBLIC_UPLOAD_LIMIT_BYTES) || 0,
+    };
 }
 
 export type Tier = {
     name: string;
     max_storage_bytes: number;
     stripe_price_id: string | null;
+    display_price: string;
+    display_frequency: string;
+    description: string;
+    display_features: string[];
+    is_popular: boolean;
 };
 
 type RawPaymentInfo = {

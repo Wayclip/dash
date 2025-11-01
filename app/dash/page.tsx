@@ -29,7 +29,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
+import { cn, getPaymentInfo, ParsedPaymentInfo } from '@/lib/utils';
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -363,6 +363,7 @@ const DashboardPage = () => {
     const [show2FADialog, setShow2FADialog] = useState(false);
     const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false);
     const [isManagingSubscription, setIsManagingSubscription] = useState(false);
+    const [paymentData, setPaymentData] = useState<ParsedPaymentInfo | null>(null);
 
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
@@ -371,6 +372,10 @@ const DashboardPage = () => {
     }, [isLoading, isAuthenticated, router]);
 
     useEffect(() => {
+        const fetchPaymentData = async () => {
+            const data = await getPaymentInfo();
+            setPaymentData(data);
+        };
         const fetchClips = async () => {
             if (isAuthenticated) {
                 try {
@@ -387,6 +392,7 @@ const DashboardPage = () => {
         };
 
         fetchClips();
+        fetchPaymentData();
     }, [isAuthenticated, api_url]);
 
     const handleUnlinkProvider = async (provider: string) => {
@@ -495,7 +501,8 @@ const DashboardPage = () => {
         return <LoadingScreen />;
     }
 
-    const userTierPlan = pricingPlans.find((p) => p.tierId === userData?.tier) ?? pricingPlans[0];
+    const userTierPlan =
+        paymentData?.active_tiers.find((p) => p.name === userData?.tier) ?? paymentData?.active_tiers[0];
     const storageLimitBytes = userData.storage_limit;
     const storageUsedBytes = userData.storage_used;
     const storageUsedGB = storageUsedBytes / (1024 * 1024 * 1024);
@@ -824,7 +831,8 @@ const DashboardPage = () => {
                                 <CardTitle>Your Subscription</CardTitle>
                                 <CardDescription>
                                     You are currently on the{' '}
-                                    <span className='font-semibold text-primary'>{userTierPlan.name}</span> plan.
+                                    <span className='font-semibold text-primary'>{userTierPlan?.name ?? 'Error'}</span>{' '}
+                                    plan.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -849,34 +857,34 @@ const DashboardPage = () => {
                             <h2 className='text-xl font-semibold'>Manage Subscription</h2>
                             <p className='text-muted-foreground'>
                                 You are currently on the{' '}
-                                <span className='font-semibold text-primary'>{userTierPlan.name}</span> plan.
+                                <span className='font-semibold text-primary'>{userTierPlan?.name}</span> plan.
                             </p>
                         </header>
                     )}
                     <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-16'>
-                        {pricingPlans.map((plan) => (
+                        {paymentData?.active_tiers.map((plan) => (
                             <Card
                                 key={plan.name}
                                 className={cn(
                                     'flex flex-col',
-                                    plan.isPopular && 'border-primary',
-                                    plan.tierId === userData.tier && 'ring-2 ring-primary',
+                                    plan.is_popular && 'border-primary',
+                                    plan.name === userData.tier && 'ring-2 ring-primary',
                                 )}
                             >
                                 <CardHeader>
                                     <div className='flex justify-between items-center'>
                                         <CardTitle>{plan.name}</CardTitle>
-                                        {plan.isPopular && <Badge>Most Popular</Badge>}
+                                        {plan.is_popular && <Badge>Most Popular</Badge>}
                                     </div>
                                     <CardDescription>{plan.description}</CardDescription>
                                 </CardHeader>
                                 <CardContent className='flex-1 space-y-4'>
                                     <div>
-                                        <span className='text-4xl font-bold'>{plan.price}</span>
-                                        <span className='text-muted-foreground'>{plan.priceFrequency}</span>
+                                        <span className='text-4xl font-bold'>{plan.display_price}</span>
+                                        <span className='text-muted-foreground'>{plan.display_frequency}</span>
                                     </div>
                                     <ul className='space-y-2 text-sm'>
-                                        {plan.features.map((feature) => (
+                                        {plan.display_features.map((feature) => (
                                             <li key={feature} className='flex items-center gap-2'>
                                                 <Check className='size-4 text-primary' />
                                                 <span className='text-muted-foreground'>{feature}</span>
@@ -889,11 +897,11 @@ const DashboardPage = () => {
                                         <Button
                                             className='w-full cursor-pointer'
                                             disabled={
-                                                plan.tierId === userData.tier || isUpgrading || plan.tierId === 'free'
+                                                plan.name === userData.tier || isUpgrading || plan.name === 'free'
                                             }
-                                            onClick={() => handleUpgrade(plan.apiId)}
+                                            onClick={() => handleUpgrade(plan.name)}
                                         >
-                                            {plan.tierId === userData.tier
+                                            {plan.name === userData.tier
                                                 ? 'Current Plan'
                                                 : isUpgrading
                                                   ? 'Processing...'
@@ -902,10 +910,10 @@ const DashboardPage = () => {
                                     ) : (
                                         <Button
                                             className='w-full cursor-pointer'
-                                            disabled={plan.tierId === userData.tier}
+                                            disabled={plan.name === userData.tier}
                                             onClick={handleManageSubscription}
                                         >
-                                            {plan.tierId === userData.tier ? 'Current Plan' : 'Manage Plan'}
+                                            {plan.name === userData.tier ? 'Current Plan' : 'Manage Plan'}
                                         </Button>
                                     )}
                                 </CardFooter>
