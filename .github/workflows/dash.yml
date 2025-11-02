@@ -23,7 +23,16 @@ jobs:
 
             - name: Get short SHA
               id: vars
-              run: echo "SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
+              run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+            - name: Determine tags
+              id: tags
+              run: |
+                  if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+                    echo "TAGS=wayclip/dash:latest" >> $GITHUB_ENV
+                  elif [[ "${GITHUB_REF}" == "refs/heads/selfhosting" ]]; then
+                    echo "TAGS=wayclip/dash:selfhosting-${SHORT_SHA}" >> $GITHUB_ENV
+                  fi
 
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v3
@@ -38,8 +47,4 @@ jobs:
                   file: ./Dockerfile
                   push: true
                   platforms: linux/amd64,linux/arm64
-                  tags: |
-                      # Default tag for main branch
-                      ${{ github.ref == 'refs/heads/main' && 'wayclip/dash:latest' || '' }}
-                      # Selfhosting branch with short SHA
-                      ${{ github.ref == 'refs/heads/selfhosting' && format('wayclip/dash:selfhosting-{0}', env.SHORT_SHA) || '' }}
+                  tags: ${{ env.TAGS }}
