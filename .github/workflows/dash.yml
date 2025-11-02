@@ -4,6 +4,7 @@ on:
     push:
         branches:
             - main
+            - selfhosting
 
 jobs:
     build-and-push:
@@ -20,6 +21,10 @@ jobs:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+            - name: Get short SHA
+              id: vars
+              run: echo "SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
+
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v3
 
@@ -32,5 +37,9 @@ jobs:
                   context: .
                   file: ./Dockerfile
                   push: true
-                  tags: wayclip/dash:latest
                   platforms: linux/amd64,linux/arm64
+                  tags: |
+                      # Default tag for main branch
+                      ${{ github.ref == 'refs/heads/main' && 'wayclip/dash:latest' || '' }}
+                      # Selfhosting branch with short SHA
+                      ${{ github.ref == 'refs/heads/selfhosting' && format('wayclip/dash:selfhosting-{0}', env.SHORT_SHA) || '' }}
