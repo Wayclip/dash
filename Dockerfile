@@ -8,7 +8,9 @@ RUN bun install --immutable
 
 COPY . .
 
-RUN sed -i 's|NEXT_PUBLIC_API_URL=.*|NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}|' .env
+COPY .example.env .env
+ARG NEXT_PUBLIC_API_URL=https://wayclip.com
+RUN sed -i "s|NEXT_PUBLIC_API_URL=.*|NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}|" .env
 
 RUN bun run build
 
@@ -22,11 +24,8 @@ ENV HOST=0.0.0.0
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY --from=builder /app/.env ./
 
 EXPOSE 3003
 
-ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "server.js"]
