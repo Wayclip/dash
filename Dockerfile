@@ -18,7 +18,7 @@ FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3003
+ENV PORT=0330
 ENV HOST=0.0.0.0
 
 COPY --from=builder /app/public ./public
@@ -26,6 +26,6 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/.env ./
 
-EXPOSE 3003
+EXPOSE 0330 
 
 CMD ["node", "server.js"]
