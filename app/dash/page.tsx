@@ -373,7 +373,7 @@ const DashboardPage = () => {
 
     useEffect(() => {
         const fetchPaymentData = async () => {
-            const data = await getPaymentInfo();
+            const data = getPaymentInfo();
             setPaymentData(data);
         };
         const fetchClips = async () => {
@@ -531,7 +531,7 @@ const DashboardPage = () => {
                         <h2 className='text-xl font-semibold'>Account Data</h2>
                     </header>
                     <div className='grid lg:grid-cols-3 gap-6'>
-                        <Card className='flex flex-col'>
+                        <Card className='flex flex-col col-span-3'>
                             <CardHeader>
                                 <CardTitle>Account Information</CardTitle>
                                 <CardDescription>Manage your account details and security settings.</CardDescription>

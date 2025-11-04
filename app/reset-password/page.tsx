@@ -51,7 +51,7 @@ const ResetPasswordClientComponent = () => {
     useEffect(() => {
         const fetchAuthSettings = async () => {
             try {
-                const info = await getAuthInfo();
+                const info = getAuthInfo();
                 setAuthInfo(info);
             } catch (error) {
                 console.error('Failed to fetch auth settings:', error);

@@ -19,7 +19,7 @@ export const PaymentVerificationClient = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            const payment = await getPaymentInfo();
+            const payment = getPaymentInfo();
             setPaymentInfo(payment);
         };
         fetchData();

@@ -6,17 +6,13 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export type AppInfo = {
-    backend_url: string;
-    frontend_url: string;
     app_name: string;
     default_avatar_url: string;
     upload_limit_bytes: number;
 };
 
-export async function getAppInfo(): Promise<AppInfo> {
+export function getAppInfo(): AppInfo {
     return {
-        backend_url: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
-        frontend_url: process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3003',
         app_name: process.env.NEXT_PUBLIC_APP_NAME || 'Wayclip',
         default_avatar_url: process.env.NEXT_PUBLIC_DEFAULT_AVATAR || '',
         upload_limit_bytes: Number(process.env.NEXT_PUBLIC_UPLOAD_LIMIT_BYTES) || 0,
@@ -34,11 +30,6 @@ export type Tier = {
     is_popular: boolean;
 };
 
-type RawPaymentInfo = {
-    payments_enabled: boolean;
-    active_tiers: string;
-};
-
 export type ParsedPaymentInfo = {
     payments_enabled: boolean;
     active_tiers: Tier[];
@@ -51,34 +42,26 @@ export type AuthInfo = {
     email_auth_enabled: boolean;
 };
 
-export async function getPaymentInfo(): Promise<ParsedPaymentInfo> {
-    const api_url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const res = await fetch(`${api_url}/get-payment-info`);
+export function getPaymentInfo(): ParsedPaymentInfo {
+    const payments_enabled = process.env.NEXT_PUBLIC_PAYMENTS_ENABLED === 'true';
 
-    if (!res.ok) {
-        throw new Error('Failed to fetch payment info');
-    }
-
-    const rawData: RawPaymentInfo = await res.json();
-
+    let active_tiers: Tier[] = [];
     try {
-        const parsedTiers: Tier[] = JSON.parse(rawData.active_tiers);
-
-        return {
-            payments_enabled: rawData.payments_enabled,
-            active_tiers: parsedTiers,
-        };
+        if (process.env.NEXT_PUBLIC_ACTIVE_TIERS) {
+            active_tiers = JSON.parse(process.env.NEXT_PUBLIC_ACTIVE_TIERS);
+        }
     } catch (error) {
-        console.error('Failed to parse active_tiers JSON:', error);
-        throw new Error('Failed to parse active_tiers from payment info');
+        console.error('Failed to parse NEXT_PUBLIC_ACTIVE_TIERS:', error);
     }
+
+    return { payments_enabled, active_tiers };
 }
 
-export async function getAuthInfo(): Promise<AuthInfo> {
-    const api_url = process.env.NEXT_PUBLIC_API_URL;
-    const res = await fetch(`${api_url}/get-auth-info`);
-    if (!res.ok) {
-        throw new Error('Failed to fetch auth info');
-    }
-    return res.json();
+export function getAuthInfo(): AuthInfo {
+    return {
+        discord_auth_enabled: process.env.NEXT_PUBLIC_DISCORD_AUTH_ENABLED === 'true',
+        github_auth_enabled: process.env.NEXT_PUBLIC_GITHUB_AUTH_ENABLED === 'true',
+        google_auth_enabled: process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true',
+        email_auth_enabled: process.env.NEXT_PUBLIC_EMAIL_AUTH_ENABLED === 'true',
+    };
 }

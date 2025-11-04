@@ -79,7 +79,7 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
             const response = await axios.get<FullUserDetails>(`${api_url}/admin/users/${userId}`, {
                 withCredentials: true,
             });
-            const paymentReponse = await getPaymentInfo();
+            const paymentReponse = getPaymentInfo();
             setDetails(response.data);
             setPaymentInfo(paymentReponse);
         } catch (error) {

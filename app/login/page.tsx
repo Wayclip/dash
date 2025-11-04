@@ -48,7 +48,7 @@ const LoginClientComponent = () => {
     useEffect(() => {
         const fetchAuthInfo = async () => {
             try {
-                const info = await getAuthInfo();
+                const info = getAuthInfo();
                 setAuthInfo(info);
             } catch (error) {
                 console.error('Failed to fetch auth info:', error);

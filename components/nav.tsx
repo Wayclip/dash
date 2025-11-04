@@ -7,7 +7,7 @@ import { getAppInfo } from '@/lib/utils';
 import { LinkItem } from '@/app/layout';
 
 export const Navbar = async () => {
-    const appInfo = await getAppInfo();
+    const appInfo = getAppInfo();
     const navLinks: LinkItem[] = JSON.parse(process.env.NEXT_PUBLIC_NAVBAR_LINKS || '[]');
     return (
         <header
