@@ -13,33 +13,26 @@ const inter = Inter({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-    let appInfo: AppInfo = {
-        backend_url: '',
-        frontend_url: '',
-        app_name: 'MyApp',
-        default_avatar_url: '',
-        upload_limit_bytes: 0,
-    };
-
+    let appInfo: AppInfo;
     try {
-        appInfo = await getAppInfo();
-    } catch (e) {
-        console.error('Failed to fetch app info for metadata', e);
-    }
+        appInfo = getAppInfo();
 
-    return {
-        title: appInfo.app_name,
-        description: `Welcome to ${appInfo.app_name}`,
-        openGraph: {
-            title: appInfo.app_name,
-            url: appInfo.frontend_url,
-        },
-        twitter: {
-            card: 'summary_large_image',
+        return {
             title: appInfo.app_name,
             description: `Welcome to ${appInfo.app_name}`,
-        },
-    };
+            openGraph: {
+                title: appInfo.app_name,
+            },
+            twitter: {
+                card: 'summary_large_image',
+                title: appInfo.app_name,
+                description: `Welcome to ${appInfo.app_name}`,
+            },
+        };
+    } catch (e) {
+        console.error('Failed to fetch app info for metadata', e);
+        throw new Error('Failed to get .env');
+    }
 }
 export type LinkItem = {
     text: string;
@@ -56,7 +49,7 @@ export default async function RootLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const appInfo = await getAppInfo();
+    const appInfo = getAppInfo();
     const app_desc = process.env.NEXT_PUBLIC_APP_DESC;
 
     const footerLinks: LinkCategories = JSON.parse(process.env.NEXT_PUBLIC_FOOTER_LINKS || '{}');
