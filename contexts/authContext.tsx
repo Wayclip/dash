@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import axios from 'axios';
+import { useConfig } from './configContext';
 
 type CredentialProvider = 'email' | 'github' | 'google' | 'discord';
 
@@ -42,34 +43,32 @@ export interface Clip {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const api_url = process.env.NEXT_PUBLIC_API_URL;
+    const { config, isLoading: isConfigLoading } = useConfig();
     const [user, setUser] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const doLogout = useCallback(async () => {
-        try {
-            await axios.post(`${api_url}/api/logout`, {}, { withCredentials: true });
-        } catch (error) {
-            console.error('Logout request failed, proceeding with client-side logout:', error);
-        } finally {
-            setUser(null);
-            if (window.location.pathname !== '/login') {
-                window.location.href = '/login';
+        if (config?.apiUrl) {
+            try {
+                await axios.post(`${config.apiUrl}/api/logout`, {}, { withCredentials: true });
+            } catch (error) {
+                console.error('Logout request failed, proceeding client-side.', error);
             }
         }
-    }, [api_url]);
+        setUser(null);
+        if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+        }
+    }, [config?.apiUrl]);
 
     const fetchUser = useCallback(async () => {
-        if (!api_url) {
-            console.error('Error: NEXT_PUBLIC_API_URL is not defined. Please check your .env.local file.');
-            setIsLoading(false);
+        if (isConfigLoading || !config?.apiUrl) {
             return;
         }
         try {
-            const response = await axios.get<UserProfile>(`${api_url}/api/me`, {
+            const response = await axios.get<UserProfile>(`${config.apiUrl}/api/me`, {
                 withCredentials: true,
             });
-
             if (response.data) {
                 if (response.data.is_banned) {
                     await doLogout();
@@ -80,12 +79,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setUser(null);
             }
         } catch (error) {
-            console.error(error);
             setUser(null);
         } finally {
             setIsLoading(false);
         }
-    }, [api_url, doLogout]);
+    }, [config?.apiUrl, doLogout, isConfigLoading]);
 
     useEffect(() => {
         fetchUser();
@@ -99,7 +97,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const value = {
         user,
         isAuthenticated: !!user,
-        isLoading,
+        isLoading: isLoading || isConfigLoading,
         logout: doLogout,
         refreshUser,
     };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -15,24 +15,14 @@ import {
 import axios from 'axios';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@radix-ui/react-collapsible';
 import { UserDetailView } from '@/components/detailView';
-import { ChevronsUpDown } from 'lucide-react';
+import { ChevronsUpDown, Trash2, Ban, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Ban, EyeOff } from 'lucide-react';
-
-const API_URL = 'https://wayclip.com';
-
-const formatBytes = (bytes: number, decimals = 2) => {
-    if (!+bytes) return '0 Bytes';
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-};
+import { useConfig } from '@/contexts/configContext';
+import { formatBytes } from '@/lib/utils';
 
 interface UserAdminInfo {
     id: string;
@@ -44,14 +34,12 @@ interface UserAdminInfo {
     clip_count: number;
     data_used: number;
 }
-
 interface ReportedClipInfo {
     clip_id: string;
     file_name: string;
     uploader_username: string;
     report_token: string;
 }
-
 interface AdminDashboardData {
     users: UserAdminInfo[];
     reported_clips: ReportedClipInfo[];
@@ -59,60 +47,53 @@ interface AdminDashboardData {
 }
 
 const AdminPanel = () => {
+    const { config } = useConfig();
     const [data, setData] = useState<AdminDashboardData | null>(null);
     const [openCollapsible, setOpenCollapsible] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
+        if (!config?.apiUrl) return;
         setIsLoading(true);
         try {
-            const response = await axios.get<AdminDashboardData>(`${API_URL}/admin/dashboard`, {
+            const response = await axios.get<AdminDashboardData>(`${config.apiUrl}/admin/dashboard`, {
                 withCredentials: true,
             });
             setData(response.data);
         } catch (error) {
-            toast.error(`Could not load admin data, ${error}`);
+            console.error(error);
+            toast.error(`Could not load admin data.`);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [config?.apiUrl]);
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (config) {
+            fetchData();
+        }
+    }, [config, fetchData]);
 
-    const handleRemoveVideo = async (token: string) => {
+    const handleAction = async (endpoint: string, successMessage: string, errorMessage: string) => {
+        if (!config?.apiUrl) return;
         try {
-            const response = await axios.get(`${API_URL}/admin/remove/${token}`, { withCredentials: true });
-            toast.success(response.data);
+            const response = await axios.get(`${config.apiUrl}/admin/${endpoint}`, { withCredentials: true });
+            toast.success(response.data.message || successMessage);
             fetchData();
         } catch (error) {
-            toast.error(`Failed to remove video, ${error}`);
+            console.error(error);
+            toast.error(errorMessage);
         }
     };
 
-    const handleBanUser = async (token: string) => {
-        try {
-            const response = await axios.get(`${API_URL}/admin/ban/${token}`, { withCredentials: true });
-            toast.success(response.data);
-            fetchData();
-        } catch (error) {
-            toast.error(`Failed to ban user: ${error}`);
-        }
-    };
-
-    const handleIgnoreReport = async (token: string) => {
-        try {
-            const response = await axios.get(`${API_URL}/admin/ignore/${token}`, { withCredentials: true });
-            toast.success(response.data);
-            fetchData();
-        } catch (error) {
-            toast.error(`Failed to ignore report: ${error}`);
-        }
-    };
+    const handleRemoveVideo = (token: string) =>
+        handleAction(`remove/${token}`, 'Video removed.', 'Failed to remove video.');
+    const handleBanUser = (token: string) => handleAction(`ban/${token}`, 'User banned.', 'Failed to ban user.');
+    const handleIgnoreReport = (token: string) =>
+        handleAction(`ignore/${token}`, 'Report ignored.', 'Failed to ignore report.');
 
     if (isLoading) return <p>Loading Admin Data...</p>;
-    if (!data) return <p>Could not load admin data.</p>;
+    if (!data || !config) return <p>Could not load admin data.</p>;
 
     return (
         <div className='flex flex-col gap-4'>
@@ -154,7 +135,7 @@ const AdminPanel = () => {
                                     <TableRow key={clip.clip_id}>
                                         <TableCell>
                                             <a
-                                                href={`${API_URL}/clip/${clip.clip_id}`}
+                                                href={`${config.apiUrl}/clip/${clip.clip_id}`}
                                                 target='_blank'
                                                 rel='noopener noreferrer'
                                             >
@@ -172,9 +153,9 @@ const AdminPanel = () => {
                                                 </AlertDialogTrigger>
                                                 <AlertDialogContent>
                                                     <AlertDialogHeader>
-                                                        <AlertDialogTitle>Ban User?</AlertDialogTitle>
+                                                        <AlertDialogTitle>Ignore Report?</AlertDialogTitle>
                                                         <AlertDialogDescription>
-                                                            You are going to ignore this clip. This action is
+                                                            Are you sure you want to ignore this report? This action is
                                                             irreversible.
                                                         </AlertDialogDescription>
                                                     </AlertDialogHeader>
@@ -212,7 +193,6 @@ const AdminPanel = () => {
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
                                             </AlertDialog>
-
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
                                                     <Button size='sm' className='cursor-pointer' variant='outline'>
@@ -248,7 +228,6 @@ const AdminPanel = () => {
                     )}
                 </CardContent>
             </Card>
-
             <Card>
                 <CardHeader>
                     <CardTitle>All Users</CardTitle>
@@ -319,5 +298,4 @@ const AdminPanel = () => {
         </div>
     );
 };
-
 export default AdminPanel;

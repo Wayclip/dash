@@ -2,28 +2,19 @@
 
 import axios from 'axios';
 import { useAuth } from '@/contexts/authContext';
+import { useConfig } from '@/contexts/configContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getPaymentInfo, ParsedPaymentInfo } from '@/lib/utils';
 
 export const PaymentVerificationClient = () => {
-    const api_url = process.env.NEXT_PUBLIC_API_URL;
+    const { config } = useConfig();
     const { user, refreshUser, isLoading } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
     const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
     const [initialTier, setInitialTier] = useState<string | undefined>(undefined);
-    const [paymentInfo, setPaymentInfo] = useState<ParsedPaymentInfo | null>(null);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            const payment = getPaymentInfo();
-            setPaymentInfo(payment);
-        };
-        fetchData();
-    }, []);
 
     useEffect(() => {
         if (user && initialTier === undefined) {
@@ -31,70 +22,66 @@ export const PaymentVerificationClient = () => {
         }
     }, [user, initialTier]);
 
-    useEffect(() => {
-        if (isLoading || !user || initialTier === undefined) {
-            return;
-        }
-
-        const sessionId = searchParams.get('session_id');
-        if (!sessionId) {
-            setStatus('error');
-            return;
-        }
-
-        if (!paymentInfo?.payments_enabled) {
-            setStatus('error');
-            console.error('Payments are disabled');
-            return;
-        }
-
-        const verifyStripeSession = async () => {
+    const verifySession = useCallback(
+        async (sessionId: string) => {
+            if (!config?.apiUrl) return;
             try {
-                const response = await axios.get(`${api_url}/api/checkout/verify-session?session_id=${sessionId}`, {
-                    withCredentials: true,
-                });
-
+                const response = await axios.get(
+                    `${config.apiUrl}/api/checkout/verify-session?session_id=${sessionId}`,
+                    { withCredentials: true },
+                );
                 if (response.data.status === 'paid') {
                     setStatus('success');
                 } else if (response.data.status === 'open') {
-                    setTimeout(verifyStripeSession, 3000);
+                    setTimeout(() => verifySession(sessionId), 3000);
                 } else {
                     setStatus('error');
                 }
             } catch (error) {
-                console.error('Verification failed:', error);
+                console.error(error);
                 setStatus('error');
             }
-        };
-
-        verifyStripeSession();
-    }, [isLoading, user, initialTier, searchParams, api_url, paymentInfo]);
+        },
+        [config?.apiUrl],
+    );
 
     useEffect(() => {
-        if (status !== 'success' || !user || initialTier === undefined) {
+        if (isLoading || !user || initialTier === undefined || !config) return;
+
+        const sessionId = searchParams.get('session_id');
+        if (!sessionId || !config.paymentsEnabled) {
+            setStatus('error');
             return;
         }
 
-        if (user.tier !== initialTier) {
-            const redirectTimer = setTimeout(() => {
-                router.replace('/dash');
-            }, 2000);
+        verifySession(sessionId);
+    }, [isLoading, user, initialTier, config, searchParams, verifySession]);
 
-            return () => clearTimeout(redirectTimer);
-        }
+    useEffect(() => {
+        if (status !== 'success' || !user || initialTier === undefined) return;
 
-        const pollInterval = setInterval(() => {
-            refreshUser();
+        const checkUserTier = async () => {
+            await refreshUser();
+            if (user.tier !== initialTier) {
+                setTimeout(() => router.replace('/dash'), 2000);
+                return true;
+            }
+            return false;
+        };
+
+        const intervalId = setInterval(async () => {
+            const updated = await checkUserTier();
+            if (updated) clearInterval(intervalId);
         }, 2000);
 
-        const maxWaitTimer = setTimeout(() => {
-            clearInterval(pollInterval);
+        const timeoutId = setTimeout(() => {
+            clearInterval(intervalId);
             router.replace('/dash');
         }, 10000);
 
         return () => {
-            clearInterval(pollInterval);
-            clearTimeout(maxWaitTimer);
+            clearInterval(intervalId);
+            clearTimeout(timeoutId);
         };
     }, [status, user, initialTier, refreshUser, router]);
 
@@ -116,11 +103,10 @@ export const PaymentVerificationClient = () => {
                         <XCircle className='h-16 w-16 text-destructive' />
                         <CardTitle className='mt-4 text-2xl'>Verification Failed</CardTitle>
                         <CardDescription>
-                            Invalid session. Please check your account or contact support via support@wayclip.com.
+                            Invalid session. Please check your account or contact support.
                         </CardDescription>
                     </>
                 );
-            case 'verifying':
             default:
                 return (
                     <>
@@ -144,3 +130,5 @@ export const PaymentVerificationClient = () => {
         </div>
     );
 };
+
+export default PaymentVerificationClient;
