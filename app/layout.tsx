@@ -19,10 +19,10 @@ export function generateMetadata(): Metadata {
     const description = config?.appDesc || `Welcome to ${appName}`;
 
     return {
-        title: appName,
+        title: `${appName} | Dashboard`,
         description,
-        openGraph: { title: appName, description },
-        twitter: { card: 'summary_large_image', title: appName, description },
+        openGraph: { title: `${appName} | Dashboard`, description },
+        twitter: { card: 'summary_large_image', title: `${appName} | Dashboard`, description },
     };
 }
 
