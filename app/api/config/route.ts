@@ -15,6 +15,7 @@ export interface Tier {
 export interface AppConfig {
     apiUrl: string;
     appName: string;
+    appDesc: string;
     defaultAvatarUrl: string;
     uploadLimitBytes: number;
     paymentsEnabled: boolean;

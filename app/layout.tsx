@@ -16,7 +16,7 @@ const inter = Inter({
 export function generateMetadata(): Metadata {
     const config = getServerConfig();
     const appName = config?.appName || 'Wayclip';
-    const description = process.env.NEXT_PUBLIC_APP_DESC || `Welcome to ${appName}`;
+    const description = config?.appDesc || `Welcome to ${appName}`;
 
     return {
         title: appName,
@@ -32,7 +32,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     const config = getServerConfig();
-    const appDesc = process.env.NEXT_PUBLIC_APP_DESC || '';
+    const appDesc = config?.appDesc || '';
 
     return (
         <html lang='en' className={inter.className} suppressHydrationWarning>

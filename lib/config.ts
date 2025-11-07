@@ -33,6 +33,7 @@ export function getServerConfig(): AppConfig {
     return {
         apiUrl: process.env.NEXT_PUBLIC_API_URL || '',
         appName: process.env.NEXT_PUBLIC_APP_NAME || 'Wayclip',
+        appDesc: process.env.NEXT_PUBLIC_APP_DESC || '',
         defaultAvatarUrl: process.env.NEXT_PUBLIC_DEFAULT_AVATAR_URL || '',
         uploadLimitBytes: Number(process.env.NEXT_PUBLIC_UPLOAD_LIMIT_BYTES) || 0,
         paymentsEnabled: process.env.NEXT_PUBLIC_PAYMENTS_ENABLED === 'TRUE',
