@@ -4,8 +4,7 @@ import { AuthProvider } from '@/contexts/authContext';
 import { ConfigProvider } from '@/contexts/configContext';
 import { Toaster } from 'sonner';
 import { Inter } from 'next/font/google';
-import { Navbar } from '@/components/nav';
-import { Footer } from '@/components/footer';
+import { AppShell } from '@/components/appShell';
 import { getServerConfig } from '@/lib/config';
 import './globals.css';
 
@@ -31,18 +30,13 @@ export default function RootLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const config = getServerConfig();
-    const appDesc = config?.appDesc || '';
-
     return (
         <html lang='en' className={inter.className} suppressHydrationWarning>
             <body>
                 <ConfigProvider>
                     <AuthProvider>
                         <ThemeProvider attribute='class' defaultTheme='system' enableSystem disableTransitionOnChange>
-                            <Navbar appName={config?.appName} navbarLinks={config?.navbarLinks} />
-                            <main className='flex-1 w-full'>{children}</main>
-                            <Footer appName={config?.appName} appDesc={appDesc} footerLinks={config?.footerLinks} />
+                            <AppShell>{children}</AppShell>
                             <Toaster richColors theme='system' />
                         </ThemeProvider>
                     </AuthProvider>
