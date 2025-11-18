@@ -1,6 +1,7 @@
 'use client';
 
 import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug, Shield, ShieldCheck, Key, RefreshCcw } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 import { InputOTP, InputOTPSlot, InputOTPGroup, InputOTPSeparator } from '@/components/ui/input-otp';
 import AdminPanel from '@/components/panel';
 import { toast } from 'sonner';
@@ -51,6 +52,76 @@ const providerIcons: { [key: string]: React.ReactNode } = {
     google: <BsGoogle className='h-5 w-5' />,
     discord: <BsDiscord className='h-5 w-5' />,
     email: <span className='text-xl font-bold'>@</span>,
+};
+
+interface Session {
+    id: string;
+    device: string;
+    last_seen_at: string;
+    created_at: string;
+}
+
+const SessionsTable = ({ sessions, onRevoke }: { sessions: Session[]; onRevoke: (id: string) => void }) => {
+    if (!sessions || sessions.length === 0) {
+        return <p className='text-muted-foreground'>No active sessions found.</p>;
+    }
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Device</TableHead>
+                    <TableHead>Last Active</TableHead>
+                    <TableHead>Signed In</TableHead>
+                    <TableHead className='text-right'>Action</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {sessions.map((session) => (
+                    <TableRow key={session.id}>
+                        <TableCell className='font-medium'>{session.device}</TableCell>
+                        <TableCell>{new Date(session.last_seen_at).toLocaleString()}</TableCell>
+                        <TableCell>{new Date(session.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell className='text-right'>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button
+                                        variant='ghost'
+                                        size='sm'
+                                        className='text-xs text-destructive hover:bg-destructive/10 hover:text-destructive'
+                                    >
+                                        Revoke
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Revoke Session?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will sign this device out of your account. You will need to log in
+                                            again on that device. Are you sure?
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel asChild>
+                                            <Button size='sm' variant='ghost' className='cursor-pointer'>
+                                                Cancel
+                                            </Button>
+                                        </AlertDialogCancel>
+                                        <Button
+                                            variant='destructive'
+                                            onClick={() => onRevoke(session.id)}
+                                            className='cursor-pointer'
+                                        >
+                                            Revoke Session
+                                        </Button>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    );
 };
 
 const ClipsTable = ({
@@ -342,6 +413,8 @@ const DashboardPage = () => {
     const [show2FADialog, setShow2FADialog] = useState(false);
     const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false);
     const [isManagingSubscription, setIsManagingSubscription] = useState(false);
+    const [sessions, setSessions] = useState<Session[]>([]);
+    const [sessionsLoading, setSessionsLoading] = useState(true);
 
     useEffect(() => {
         if (!isAuthLoading && !isAuthenticated) {
@@ -350,24 +423,70 @@ const DashboardPage = () => {
     }, [isAuthLoading, isAuthenticated, router]);
 
     useEffect(() => {
-        const fetchClips = async () => {
+        const fetchData = async () => {
             if (isAuthenticated && config?.apiUrl) {
                 try {
                     setClipsLoading(true);
-                    const response = await axios.get<Clip[]>(`${config.apiUrl}/api/clips/index`, {
+                    const clipsResponse = await axios.get<Clip[]>(`${config.apiUrl}/api/clips/index`, {
                         withCredentials: true,
                     });
-                    setClips(response.data);
+                    setClips(clipsResponse.data);
                 } catch (error) {
                     console.error(error);
-                    toast.error('Could not load your clips. Please try refreshing the page.');
+                    toast.error('Could not load your clips.');
                 } finally {
                     setClipsLoading(false);
                 }
+
+                try {
+                    setSessionsLoading(true);
+                    const sessionsResponse = await axios.get<Session[]>(`${config.apiUrl}/api/sessions`, {
+                        withCredentials: true,
+                    });
+                    setSessions(sessionsResponse.data);
+                } catch (error) {
+                    console.error(error);
+                    toast.error('Could not load your active sessions.');
+                } finally {
+                    setSessionsLoading(false);
+                }
             }
         };
-        fetchClips();
+        fetchData();
     }, [isAuthenticated, config?.apiUrl]);
+
+    const handleRevokeSession = async (sessionId: string) => {
+        if (!config?.apiUrl) return;
+        try {
+            await axios.delete(`${config.apiUrl}/api/sessions/${sessionId}`, { withCredentials: true });
+            setSessions((prevSessions) => prevSessions.filter((session) => session.id !== sessionId));
+            toast.success('Session has been revoked.');
+        } catch (error) {
+            if (isAxiosError(error) && error.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error('Failed to revoke the session.');
+            }
+        }
+    };
+
+    const handleLogoutAllDevices = async () => {
+        if (!config?.apiUrl) return;
+        try {
+            const response = await axios.post(`${config.apiUrl}/api/logout-devices`, {}, { withCredentials: true });
+            toast.success(response.data.message || 'All other devices have been signed out.');
+            const sessionsResponse = await axios.get<Session[]>(`${config.apiUrl}/api/sessions`, {
+                withCredentials: true,
+            });
+            setSessions(sessionsResponse.data);
+        } catch (error) {
+            if (isAxiosError(error) && error.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error('Failed to sign out other devices.');
+            }
+        }
+    };
 
     const handleUnlinkProvider = async (provider: string) => {
         if (!config?.apiUrl) return;
@@ -667,6 +786,58 @@ const DashboardPage = () => {
                                                 className='cursor-pointer'
                                             >
                                                 Yes, delete my account
+                                            </Button>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </CardFooter>
+                        </Card>
+                        <Card className='lg:col-span-3'>
+                            <CardHeader>
+                                <CardTitle>Active Sessions</CardTitle>
+                                <CardDescription>
+                                    This is a list of devices that have signed into your account. Revoke any sessions
+                                    that you do not recognize.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {sessionsLoading ? (
+                                    <div className='flex justify-center py-8'>
+                                        <div className='h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent' />
+                                    </div>
+                                ) : (
+                                    <SessionsTable sessions={sessions} onRevoke={handleRevokeSession} />
+                                )}
+                            </CardContent>
+                            <CardFooter className='flex justify-between items-center border-t pt-6'>
+                                <p className='text-sm text-muted-foreground'>Don&apos;t recognize some activity?</p>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant='outline' className='cursor-pointer'>
+                                            <ShieldAlert className='mr-2 size-4' />
+                                            Sign out of all other devices
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This will sign you out of every other session on all of your devices,
+                                                including mobile and desktop clients. You will remain logged in here.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel asChild>
+                                                <Button size='sm' variant='ghost' className='cursor-pointer'>
+                                                    Cancel
+                                                </Button>
+                                            </AlertDialogCancel>
+                                            <Button
+                                                variant='destructive'
+                                                onClick={handleLogoutAllDevices}
+                                                className='cursor-pointer'
+                                            >
+                                                Yes, sign out everywhere else
                                             </Button>
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
