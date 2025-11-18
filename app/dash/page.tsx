@@ -1,17 +1,17 @@
 'use client';
 
-import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug, Shield, ShieldCheck, Key } from 'lucide-react';
+import { Copy, Trash2, ExternalLink, Check, LogOut, Unplug, Shield, ShieldCheck, Key, RefreshCcw } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 import { InputOTP, InputOTPSlot, InputOTPGroup, InputOTPSeparator } from '@/components/ui/input-otp';
 import AdminPanel from '@/components/panel';
 import { toast } from 'sonner';
-import { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import Image from 'next/image';
-import { RefreshCcw } from 'lucide-react';
 import { Clip } from '@/contexts/authContext';
 import { useRouter } from 'next/navigation';
-import { isAxiosError } from 'axios';
+import axios, { isAxiosError } from 'axios';
 import { useAuth } from '@/contexts/authContext';
+import { useConfig } from '@/contexts/configContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
+import { cn, formatBytes } from '@/lib/utils';
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -40,7 +40,6 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import axios from 'axios';
 
 const LoadingScreen = () => (
     <div className='flex h-full min-h-screen w-full items-center justify-center bg-background/40'>
@@ -55,42 +54,103 @@ const providerIcons: { [key: string]: React.ReactNode } = {
     email: <span className='text-xl font-bold'>@</span>,
 };
 
-const formatBytes = (bytes: number, decimals = 2) => {
-    if (!+bytes) return '0 Bytes';
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+interface Session {
+    id: string;
+    device: string;
+    last_seen_at: string;
+    created_at: string;
+}
+
+const SessionsTable = ({ sessions, onRevoke }: { sessions: Session[]; onRevoke: (id: string) => void }) => {
+    if (!sessions || sessions.length === 0) {
+        return <p className='text-muted-foreground'>No active sessions found.</p>;
+    }
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Device</TableHead>
+                    <TableHead>Last Active</TableHead>
+                    <TableHead>Signed In</TableHead>
+                    <TableHead className='text-right'>Action</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {sessions.map((session) => (
+                    <TableRow key={session.id}>
+                        <TableCell className='font-medium'>{session.device}</TableCell>
+                        <TableCell>{new Date(session.last_seen_at).toLocaleString()}</TableCell>
+                        <TableCell>{new Date(session.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell className='text-right'>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button
+                                        variant='ghost'
+                                        size='sm'
+                                        className='text-xs text-destructive hover:bg-destructive/10 hover:text-destructive'
+                                    >
+                                        Revoke
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Revoke Session?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will sign this device out of your account. You will need to log in
+                                            again on that device. Are you sure?
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel asChild>
+                                            <Button size='sm' variant='ghost' className='cursor-pointer'>
+                                                Cancel
+                                            </Button>
+                                        </AlertDialogCancel>
+                                        <Button
+                                            variant='destructive'
+                                            onClick={() => onRevoke(session.id)}
+                                            className='cursor-pointer'
+                                        >
+                                            Revoke Session
+                                        </Button>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    );
 };
 
 const ClipsTable = ({
     clips,
+    apiUrl,
     onDelete,
     onCopy,
 }: {
     clips: Clip[];
+    apiUrl: string;
     onDelete: (id: string) => void;
     onCopy: (url: string) => void;
 }) => {
-    const api_url = process.env.NEXT_PUBLIC_API_URL;
     if (!clips || clips.length === 0) {
         return <p className='text-muted-foreground'>You haven&apos;t uploaded any clips yet.</p>;
     }
-
     return (
         <Table>
             <TableHeader>
                 <TableRow>
                     <TableHead className='w-[40%]'>File Name</TableHead>
-                    {'file_size' in clips[0] && <TableHead>Size</TableHead>}
-                    {'created_at' in clips[0] && <TableHead>Uploaded</TableHead>}
+                    <TableHead>Size</TableHead>
+                    <TableHead>Uploaded</TableHead>
                     <TableHead className='text-right'>Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {clips.map((clip) => {
-                    const clipUrl = `${api_url}/clip/${clip.id}`;
+                    const clipUrl = `${apiUrl}/clip/${clip.id}`;
                     return (
                         <TableRow key={clip.id}>
                             <TableCell className='font-medium truncate max-w-xs'>
@@ -104,10 +164,8 @@ const ClipsTable = ({
                                     <ExternalLink className='size-4 text-muted-foreground flex-shrink-0' />
                                 </a>
                             </TableCell>
-                            {'file_size' in clip && <TableCell>{formatBytes(clip.file_size)}</TableCell>}
-                            {'created_at' in clip && (
-                                <TableCell>{new Date(clip.created_at).toLocaleDateString()}</TableCell>
-                            )}
+                            <TableCell>{formatBytes(clip.file_size)}</TableCell>
+                            <TableCell>{new Date(clip.created_at).toLocaleDateString()}</TableCell>
                             <TableCell className='flex justify-end gap-2'>
                                 <Button
                                     variant='outline'
@@ -161,8 +219,7 @@ const ClipsTable = ({
     );
 };
 
-const ResetPasswordDialog = ({ onFinished }: { onFinished: () => void }) => {
-    const api_url = process.env.NEXT_PUBLIC_API_URL;
+const ResetPasswordDialog = ({ apiUrl, onFinished }: { apiUrl: string; onFinished: () => void }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [email, setEmail] = useState('');
 
@@ -170,7 +227,7 @@ const ResetPasswordDialog = ({ onFinished }: { onFinished: () => void }) => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const response = await axios.post(`${api_url}/auth/forgot-password`, { email });
+            const response = await axios.post(`${apiUrl}/auth/forgot-password`, { email });
             toast.success(response.data.message);
             onFinished();
         } catch (error) {
@@ -204,8 +261,7 @@ const ResetPasswordDialog = ({ onFinished }: { onFinished: () => void }) => {
     );
 };
 
-const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
-    const api_url = process.env.NEXT_PUBLIC_API_URL;
+const TwoFactorSetup = ({ apiUrl, onSuccess }: { apiUrl: string; onSuccess: () => void }) => {
     const [step, setStep] = useState<'setup' | 'verify'>('setup');
     const [secret, setSecret] = useState('');
     const [qrCodeUrl, setQrCodeUrl] = useState('');
@@ -216,13 +272,13 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
     const initiate2FA = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.post(`${api_url}/api/2fa/setup`, {}, { withCredentials: true });
+            const response = await axios.post(`${apiUrl}/api/2fa/setup`, {}, { withCredentials: true });
             setSecret(response.data.secret);
             setQrCodeUrl(response.data.qr_code_base64);
             setStep('verify');
         } catch (error) {
             toast.error('Failed to initialize 2FA setup.');
-            console.error('2FA setup failed:', error);
+            console.error(error);
         } finally {
             setIsLoading(false);
         }
@@ -232,11 +288,8 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
         setIsLoading(true);
         try {
             const response = await axios.post(
-                `${api_url}/api/2fa/verify`,
-                {
-                    secret: secret,
-                    code: verificationCode,
-                },
+                `${apiUrl}/api/2fa/verify`,
+                { secret, code: verificationCode },
                 { withCredentials: true },
             );
             setRecoveryCodes(response.data.recovery_codes);
@@ -247,7 +300,6 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
             } else {
                 toast.error('Invalid verification code. Please try again.');
             }
-            console.error('2FA verification failed:', error);
         } finally {
             setIsLoading(false);
         }
@@ -287,7 +339,6 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
             </div>
         );
     }
-
     if (step === 'verify') {
         return (
             <div className='space-y-4'>
@@ -336,7 +387,6 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
             </div>
         );
     }
-
     return (
         <div className='space-y-4'>
             <div className='text-center'>
@@ -354,8 +404,8 @@ const TwoFactorSetup = ({ onSuccess }: { onSuccess: () => void }) => {
 };
 
 const DashboardPage = () => {
-    const api_url = process.env.NEXT_PUBLIC_API_URL;
-    const { isAuthenticated, isLoading, user: userData, logout, refreshUser } = useAuth();
+    const { config, isLoading: isConfigLoading } = useConfig();
+    const { isAuthenticated, isLoading: isAuthLoading, user: userData, logout, refreshUser } = useAuth();
     const router = useRouter();
     const [clips, setClips] = useState<Clip[]>([]);
     const [clipsLoading, setClipsLoading] = useState(true);
@@ -363,35 +413,85 @@ const DashboardPage = () => {
     const [show2FADialog, setShow2FADialog] = useState(false);
     const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false);
     const [isManagingSubscription, setIsManagingSubscription] = useState(false);
+    const [sessions, setSessions] = useState<Session[]>([]);
+    const [sessionsLoading, setSessionsLoading] = useState(true);
 
     useEffect(() => {
-        if (!isLoading && !isAuthenticated) {
+        if (!isAuthLoading && !isAuthenticated) {
             router.replace('/login');
         }
-    }, [isLoading, isAuthenticated, router]);
+    }, [isAuthLoading, isAuthenticated, router]);
 
     useEffect(() => {
-        const fetchClips = async () => {
-            if (isAuthenticated) {
+        const fetchData = async () => {
+            if (isAuthenticated && config?.apiUrl) {
                 try {
                     setClipsLoading(true);
-                    const response = await axios.get<Clip[]>(`${api_url}/api/clips/index`, { withCredentials: true });
-                    setClips(response.data);
+                    const clipsResponse = await axios.get<Clip[]>(`${config.apiUrl}/api/clips/index`, {
+                        withCredentials: true,
+                    });
+                    setClips(clipsResponse.data);
                 } catch (error) {
-                    console.error('Failed to fetch clips:', error);
-                    toast.error('Could not load your clips. Please try refreshing the page.');
+                    console.error(error);
+                    toast.error('Could not load your clips.');
                 } finally {
                     setClipsLoading(false);
                 }
+
+                try {
+                    setSessionsLoading(true);
+                    const sessionsResponse = await axios.get<Session[]>(`${config.apiUrl}/api/sessions`, {
+                        withCredentials: true,
+                    });
+                    setSessions(sessionsResponse.data);
+                } catch (error) {
+                    console.error(error);
+                    toast.error('Could not load your active sessions.');
+                } finally {
+                    setSessionsLoading(false);
+                }
             }
         };
+        fetchData();
+    }, [isAuthenticated, config?.apiUrl]);
 
-        fetchClips();
-    }, [isAuthenticated, api_url]);
+    const handleRevokeSession = async (sessionId: string) => {
+        if (!config?.apiUrl) return;
+        try {
+            await axios.delete(`${config.apiUrl}/api/sessions/${sessionId}`, { withCredentials: true });
+            setSessions((prevSessions) => prevSessions.filter((session) => session.id !== sessionId));
+            toast.success('Session has been revoked.');
+        } catch (error) {
+            if (isAxiosError(error) && error.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error('Failed to revoke the session.');
+            }
+        }
+    };
+
+    const handleLogoutAllDevices = async () => {
+        if (!config?.apiUrl) return;
+        try {
+            const response = await axios.post(`${config.apiUrl}/api/logout-devices`, {}, { withCredentials: true });
+            toast.success(response.data.message || 'All other devices have been signed out.');
+            const sessionsResponse = await axios.get<Session[]>(`${config.apiUrl}/api/sessions`, {
+                withCredentials: true,
+            });
+            setSessions(sessionsResponse.data);
+        } catch (error) {
+            if (isAxiosError(error) && error.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error('Failed to sign out other devices.');
+            }
+        }
+    };
 
     const handleUnlinkProvider = async (provider: string) => {
+        if (!config?.apiUrl) return;
         try {
-            await axios.delete(`${api_url}/api/oauth/unlink/${provider}`, { withCredentials: true });
+            await axios.delete(`${config.apiUrl}/api/oauth/unlink/${provider}`, { withCredentials: true });
             toast.success(`${provider.charAt(0).toUpperCase() + provider.slice(1)} account unlinked successfully.`);
             await refreshUser();
         } catch (error) {
@@ -400,13 +500,13 @@ const DashboardPage = () => {
             } else {
                 toast.error('An unexpected error occurred.');
             }
-            console.error(`Failed to unlink ${provider}:`, error);
         }
     };
 
     const handleDeleteAccount = async () => {
+        if (!config?.apiUrl) return;
         try {
-            const response = await axios.delete(`${api_url}/api/account`, { withCredentials: true });
+            const response = await axios.delete(`${config.apiUrl}/api/account`, { withCredentials: true });
             toast.success(response.data.message || 'Your account has been scheduled for deletion.');
             logout();
         } catch (error) {
@@ -415,35 +515,37 @@ const DashboardPage = () => {
             } else {
                 toast.error('Failed to delete account. Please try again.');
             }
-            console.error('Account deletion failed:', error);
         }
     };
 
     const handleDeleteClip = async (clipId: string) => {
+        if (!config?.apiUrl) return;
         try {
-            await axios.delete(`${api_url}/api/clip/${clipId}`, { withCredentials: true });
+            await axios.delete(`${config.apiUrl}/api/clip/${clipId}`, { withCredentials: true });
             setClips((prevClips) => prevClips.filter((clip) => clip.id !== clipId));
             toast.success('Clip deleted successfully.');
             await refreshUser();
         } catch (error) {
-            console.error('Failed to delete clip:', error);
+            console.error(error);
             toast.error('An error occurred while deleting the clip. Please try again.');
         }
     };
 
-    const handleUpgrade = async (apiId: string | null) => {
-        if (!apiId) return;
+    const handleUpgrade = async (tierName: string | null) => {
+        if (!tierName || !config?.apiUrl) return;
         setIsUpgrading(true);
         try {
-            const response = await axios.post(`${api_url}/api/checkout/${apiId}`, {}, { withCredentials: true });
+            const response = await axios.post(
+                `${config.apiUrl}/api/checkout/${tierName}`,
+                {},
+                { withCredentials: true },
+            );
             const { url } = response.data;
             if (url) {
                 window.location.href = url;
-            } else {
-                throw new Error('No checkout URL received from server.');
             }
         } catch (error) {
-            console.error('Failed to create checkout session:', error);
+            console.error(error);
             toast.error('An error occurred while setting up the payment process. Please try again.');
         } finally {
             setIsUpgrading(false);
@@ -451,18 +553,17 @@ const DashboardPage = () => {
     };
 
     const handleManageSubscription = async () => {
+        if (!config?.apiUrl) return;
         setIsManagingSubscription(true);
         try {
-            const response = await axios.post(`${api_url}/api/customer-portal`, {}, { withCredentials: true });
+            const response = await axios.post(`${config.apiUrl}/api/customer-portal`, {}, { withCredentials: true });
             const { url } = response.data;
             if (url) {
                 window.location.href = url;
-            } else {
-                throw new Error('No portal URL received from server.');
             }
         } catch (error) {
+            console.error(error);
             toast.error('Could not open the billing portal. Please try again.');
-            console.error('Failed to create customer portal session:', error);
         } finally {
             setIsManagingSubscription(false);
         }
@@ -478,30 +579,17 @@ const DashboardPage = () => {
         refreshUser();
     };
 
-    // const handleLogoutOtherDevices = async () => {
-    //     try {
-    //         const response = await axios.post(`${api_url}/api/logout-devices`, {}, { withCredentials: true });
-    //         toast.success(response.data.message || 'Successfully logged out other devices.');
-    //     } catch (error) {
-    //         if (isAxiosError(error) && error.response?.data?.message) {
-    //             toast.error(error.response.data.message);
-    //         } else {
-    //             toast.error('Failed to log out other devices.');
-    //         }
-    //     }
-    // };
-
-    if (isLoading || !isAuthenticated || !userData) {
+    if (isAuthLoading || isConfigLoading || !isAuthenticated || !userData || !config) {
         return <LoadingScreen />;
     }
 
-    const userTierPlan = pricingPlans.find((p) => p.tierId === userData?.tier) ?? pricingPlans[0];
-    const storageLimitBytes = userData.storage_limit;
-    const storageUsedBytes = userData.storage_used;
-    const storageUsedGB = storageUsedBytes / (1024 * 1024 * 1024);
-    const storageLimitGB = storageLimitBytes > 0 ? storageLimitBytes / (1024 * 1024 * 1024) : 0;
-    const storageUsedPercentage = storageLimitBytes > 0 ? (storageUsedBytes / storageLimitBytes) * 100 : 0;
-    const isEmailVerified = userData.email_verified_at !== null && userData.email_verified_at !== undefined;
+    const userTierPlan =
+        config.activeTiers.find((p) => p.name.toLowerCase() === userData.tier.toLowerCase()) ?? config.activeTiers[0];
+    const storageUsedGB = userData.storage_used / (1024 * 1024 * 1024);
+    const storageLimitGB = userData.storage_limit > 0 ? userData.storage_limit / (1024 * 1024 * 1024) : 0;
+    const storageUsedPercentage =
+        userData.storage_limit > 0 ? (userData.storage_used / userData.storage_limit) * 100 : 0;
+    const isEmailVerified = !!userData.email_verified_at;
 
     return (
         <div className='flex w-full flex-col bg-background/40 pt-14 sm:pt-20'>
@@ -509,7 +597,6 @@ const DashboardPage = () => {
                 <header className='sm:py-4'>
                     <h1 className='text-2xl font-semibold'>Dashboard</h1>
                 </header>
-
                 {userData.role === 'admin' && (
                     <div className='mb-8 flex flex-col gap-2'>
                         <header>
@@ -518,13 +605,12 @@ const DashboardPage = () => {
                         <AdminPanel />
                     </div>
                 )}
-
                 <div className='flex flex-col gap-4'>
                     <header>
                         <h2 className='text-xl font-semibold'>Account Data</h2>
                     </header>
                     <div className='grid lg:grid-cols-3 gap-6'>
-                        <Card className='flex flex-col'>
+                        <Card className='flex flex-col col-span-3'>
                             <CardHeader>
                                 <CardTitle>Account Information</CardTitle>
                                 <CardDescription>Manage your account details and security settings.</CardDescription>
@@ -540,7 +626,6 @@ const DashboardPage = () => {
                                             <p className='font-semibold text-lg'>{userData.username}</p>
                                         </div>
                                     </div>
-
                                     {userData.email && (
                                         <div className='space-y-1'>
                                             <p className='text-sm font-medium'>Email</p>
@@ -552,7 +637,6 @@ const DashboardPage = () => {
                                             </div>
                                         </div>
                                     )}
-
                                     <div className='space-y-1'>
                                         <p className='text-sm font-medium'>Two-Factor Authentication</p>
                                         <div className='flex items-center gap-2'>
@@ -570,7 +654,6 @@ const DashboardPage = () => {
                                         </div>
                                     </div>
                                 </div>
-
                                 <div className='space-y-3'>
                                     <Label>Connected Accounts</Label>
                                     <p className='text-sm text-muted-foreground'>
@@ -650,7 +733,7 @@ const DashboardPage = () => {
                                                     Secure your account by requiring a second verification step.
                                                 </DialogDescription>
                                             </DialogHeader>
-                                            <TwoFactorSetup onSuccess={handle2FASuccess} />
+                                            <TwoFactorSetup apiUrl={config.apiUrl} onSuccess={handle2FASuccess} />
                                         </DialogContent>
                                     </Dialog>
                                 )}
@@ -669,7 +752,10 @@ const DashboardPage = () => {
                                                     Enter your email to receive a password reset link.
                                                 </DialogDescription>
                                             </DialogHeader>
-                                            <ResetPasswordDialog onFinished={() => setShowResetPasswordDialog(false)} />
+                                            <ResetPasswordDialog
+                                                apiUrl={config.apiUrl}
+                                                onFinished={() => setShowResetPasswordDialog(false)}
+                                            />
                                         </DialogContent>
                                     </Dialog>
                                 )}
@@ -706,61 +792,59 @@ const DashboardPage = () => {
                                 </AlertDialog>
                             </CardFooter>
                         </Card>
-                        {/*
-                        TODO: Rework to actually be useful, this is just bs
-                        <Card className='flex flex-col'>
+                        <Card className='lg:col-span-3'>
                             <CardHeader>
-                                <CardTitle className='flex items-center gap-2'>
-                                    <Clock className='size-5' />
-                                    Recent Activity
-                                </CardTitle>
-                                <CardDescription>Your last known login.</CardDescription>
+                                <CardTitle>Active Sessions</CardTitle>
+                                <CardDescription>
+                                    This is a list of devices that have signed into your account. Revoke any sessions
+                                    that you do not recognize.
+                                </CardDescription>
                             </CardHeader>
-                            <CardContent className='flex-1 flex flex-col'>
-                                {userData.last_login_at && userData.last_login_ip ? (
-                                    <div className='text-sm text-muted-foreground space-y-2 h-full'>
-                                        <div>
-                                            <p className='font-medium text-foreground'>Last Login Time</p>
-                                            <p>{new Date(userData.last_login_at).toLocaleString()}</p>
-                                        </div>
-                                        <div>
-                                            <p className='font-medium text-foreground'>IP Address</p>
-                                            <p>{userData.last_login_ip}</p>
-                                        </div>
-                                        <p className='mt-auto text-xs text-muted-foreground'>
-                                            If you don&apos;t recognize this activity, please reset your password.
-                                        </p>
+                            <CardContent>
+                                {sessionsLoading ? (
+                                    <div className='flex justify-center py-8'>
+                                        <div className='h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent' />
                                     </div>
                                 ) : (
-                                    <p className='text-sm text-muted-foreground'>No recent login activity to show.</p>
+                                    <SessionsTable sessions={sessions} onRevoke={handleRevokeSession} />
                                 )}
                             </CardContent>
-                            <CardFooter className='mt-auto flex flex-wrap gap-2 border-t pt-6'>
+                            <CardFooter className='flex justify-between items-center border-t pt-6'>
+                                <p className='text-sm text-muted-foreground'>Don&apos;t recognize some activity?</p>
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                         <Button variant='outline' className='cursor-pointer'>
-                                            <LogOutIcon className='mr-2 size-4' />
-                                            Sign Out Other Devices
+                                            <ShieldAlert className='mr-2 size-4' />
+                                            Sign out of all other devices
                                         </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
-                                            <AlertDialogTitle>Sign out everywhere else?</AlertDialogTitle>
+                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                This will sign you out of all other active sessions on other browsers
-                                                and devices. Your current session will remain active.
+                                                This will sign you out of every other session on all of your devices,
+                                                including mobile and desktop clients. You will remain logged in here.
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <Button onClick={handleLogoutOtherDevices}>Continue</Button>
+                                            <AlertDialogCancel asChild>
+                                                <Button size='sm' variant='ghost' className='cursor-pointer'>
+                                                    Cancel
+                                                </Button>
+                                            </AlertDialogCancel>
+                                            <Button
+                                                variant='destructive'
+                                                onClick={handleLogoutAllDevices}
+                                                className='cursor-pointer'
+                                            >
+                                                Yes, sign out everywhere else
+                                            </Button>
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
                             </CardFooter>
-                        </Card> */}
+                        </Card>
                     </div>
-
                     <div className='flex flex-col gap-4'>
                         <div className='grid grid-cols-5 gap-6 w-full'>
                             <Card className='col-span-4 w-full'>
@@ -795,7 +879,6 @@ const DashboardPage = () => {
                                 </CardContent>
                             </Card>
                         </div>
-
                         <Card>
                             <CardHeader>
                                 <CardTitle>Your Clips</CardTitle>
@@ -807,24 +890,29 @@ const DashboardPage = () => {
                                         <div className='h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent' />
                                     </div>
                                 ) : (
-                                    <ClipsTable clips={clips} onDelete={handleDeleteClip} onCopy={handleCopyUrl} />
+                                    <ClipsTable
+                                        clips={clips}
+                                        apiUrl={config.apiUrl}
+                                        onDelete={handleDeleteClip}
+                                        onCopy={handleCopyUrl}
+                                    />
                                 )}
                             </CardContent>
                         </Card>
                     </div>
                 </div>
-
                 <div className='flex flex-col gap-4 mb-8 mt-4'>
                     <header>
                         <h2 className='text-xl font-semibold'>Billing & Subscriptions</h2>
                     </header>
-                    {userData.tier !== 'free' ? (
+                    {userData.tier.toLowerCase() !== 'free' ? (
                         <Card>
                             <CardHeader>
                                 <CardTitle>Your Subscription</CardTitle>
                                 <CardDescription>
                                     You are currently on the{' '}
-                                    <span className='font-semibold text-primary'>{userTierPlan.name}</span> plan.
+                                    <span className='font-semibold text-primary'>{userTierPlan?.name ?? 'Error'}</span>{' '}
+                                    plan.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -849,34 +937,34 @@ const DashboardPage = () => {
                             <h2 className='text-xl font-semibold'>Manage Subscription</h2>
                             <p className='text-muted-foreground'>
                                 You are currently on the{' '}
-                                <span className='font-semibold text-primary'>{userTierPlan.name}</span> plan.
+                                <span className='font-semibold text-primary'>{userTierPlan?.name}</span> plan.
                             </p>
                         </header>
                     )}
                     <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-16'>
-                        {pricingPlans.map((plan) => (
+                        {config.activeTiers.map((plan) => (
                             <Card
                                 key={plan.name}
                                 className={cn(
                                     'flex flex-col',
-                                    plan.isPopular && 'border-primary',
-                                    plan.tierId === userData.tier && 'ring-2 ring-primary',
+                                    plan.is_popular && 'border-primary',
+                                    plan.name.toLowerCase() === userData.tier.toLowerCase() && 'ring-2 ring-primary',
                                 )}
                             >
                                 <CardHeader>
                                     <div className='flex justify-between items-center'>
                                         <CardTitle>{plan.name}</CardTitle>
-                                        {plan.isPopular && <Badge>Most Popular</Badge>}
+                                        {plan.is_popular && <Badge>Most Popular</Badge>}
                                     </div>
                                     <CardDescription>{plan.description}</CardDescription>
                                 </CardHeader>
                                 <CardContent className='flex-1 space-y-4'>
                                     <div>
-                                        <span className='text-4xl font-bold'>{plan.price}</span>
-                                        <span className='text-muted-foreground'>{plan.priceFrequency}</span>
+                                        <span className='text-4xl font-bold'>{plan.display_price}</span>
+                                        <span className='text-muted-foreground'>{plan.display_frequency}</span>
                                     </div>
                                     <ul className='space-y-2 text-sm'>
-                                        {plan.features.map((feature) => (
+                                        {plan.display_features.map((feature) => (
                                             <li key={feature} className='flex items-center gap-2'>
                                                 <Check className='size-4 text-primary' />
                                                 <span className='text-muted-foreground'>{feature}</span>
@@ -885,27 +973,31 @@ const DashboardPage = () => {
                                     </ul>
                                 </CardContent>
                                 <CardFooter>
-                                    {userData.tier === 'free' ? (
+                                    {userData.tier.toLowerCase() === 'free' ? (
                                         <Button
                                             className='w-full cursor-pointer'
                                             disabled={
-                                                plan.tierId === userData.tier || isUpgrading || plan.tierId === 'free'
+                                                plan.name.toLowerCase() === userData.tier.toLowerCase() ||
+                                                isUpgrading ||
+                                                plan.name.toLowerCase() === 'free'
                                             }
-                                            onClick={() => handleUpgrade(plan.apiId)}
+                                            onClick={() => handleUpgrade(plan.stripe_price_id)}
                                         >
-                                            {plan.tierId === userData.tier
+                                            {plan.name.toLowerCase() === userData.tier.toLowerCase()
                                                 ? 'Current Plan'
                                                 : isUpgrading
                                                   ? 'Processing...'
-                                                  : 'Manage plan'}
+                                                  : 'Upgrade Plan'}
                                         </Button>
                                     ) : (
                                         <Button
                                             className='w-full cursor-pointer'
-                                            disabled={plan.tierId === userData.tier}
+                                            disabled={plan.name.toLowerCase() === userData.tier.toLowerCase()}
                                             onClick={handleManageSubscription}
                                         >
-                                            {plan.tierId === userData.tier ? 'Current Plan' : 'Manage Plan'}
+                                            {plan.name.toLowerCase() === userData.tier.toLowerCase()
+                                                ? 'Current Plan'
+                                                : 'Manage Plan'}
                                         </Button>
                                     )}
                                 </CardFooter>

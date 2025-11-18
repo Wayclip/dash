@@ -1,10 +1,8 @@
 FROM oven/bun:1-slim AS builder
 WORKDIR /app
 
-COPY package.json bun.lock ./
-COPY next.config.ts components.json eslint.config.mjs postcss.config.mjs tsconfig.json ./
-
-RUN bun install --immutable
+COPY package.json bun.lock* ./
+RUN bun install --frozen-lockfile
 
 COPY . .
 
@@ -16,11 +14,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=0330
 ENV HOST=0.0.0.0
-
-COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-EXPOSE 3003
-
+EXPOSE 0330
 CMD ["node", "server.js"]

@@ -3,12 +3,14 @@ import Link from 'next/link';
 import { Button } from './ui/button';
 import { ThemeToggle } from './toggle';
 import { BsGithub } from '@vertisanpro/react-icons/bs';
-import { getAppInfo } from '@/lib/utils';
-import { LinkItem } from '@/app/layout';
+import type { AppConfig } from '@/app/api/config/route';
 
-export const Navbar = async () => {
-    const appInfo = await getAppInfo();
-    const navLinks: LinkItem[] = JSON.parse(process.env.NEXT_PUBLIC_NAVBAR_LINKS || '[]');
+interface NavbarProps {
+    appName?: string;
+    navbarLinks?: AppConfig['navbarLinks'];
+}
+
+export const Navbar = ({ appName = 'Wayclip', navbarLinks = [] }: NavbarProps) => {
     return (
         <header
             className='fixed top-0 left-0 z-40 w-full h-14 backdrop-blur-lg border-b bg-secondary/20 transition-colors'
@@ -16,18 +18,18 @@ export const Navbar = async () => {
         >
             <nav className='flex items-center w-full h-full px-4 mx-auto max-w-7xl'>
                 <Link href='/' className='inline-flex items-center gap-2.5 font-semibold mr-4'>
-                    {appInfo.app_name}
+                    {appName}
                 </Link>
 
                 <ul className='items-center hidden gap-2 sm:flex'>
-                    {navLinks.map((v, i) => (
+                    {navbarLinks.map((link, i) => (
                         <li key={i}>
                             <Link
-                                href={v.href}
-                                aria-label={v.text}
+                                href={link.href}
+                                aria-label={link.text}
                                 className='p-2 text-sm text-muted-foreground transition-colors hover:text-accent-foreground'
                             >
-                                {v.text}
+                                {link.text}
                             </Link>
                         </li>
                     ))}
@@ -35,7 +37,6 @@ export const Navbar = async () => {
 
                 <div className='items-center hidden flex-1 justify-end gap-1.5 lg:flex'>
                     <ThemeToggle />
-
                     <Button size='icon' variant='ghost' asChild>
                         <a
                             href='https://github.com/wayclip'

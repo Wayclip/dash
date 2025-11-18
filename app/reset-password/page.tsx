@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, FormEvent, useEffect } from 'react';
+import { Suspense, useState, FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import axios, { isAxiosError } from 'axios';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { getAuthInfo, AuthInfo } from '@/lib/utils';
+import { useConfig } from '@/contexts/configContext';
 
 const InfoCard = ({
     title,
@@ -37,47 +37,21 @@ const InfoCard = ({
 );
 
 const ResetPasswordClientComponent = () => {
-    const api_url = process.env.NEXT_PUBLIC_API_URL;
+    const { config, isLoading: isConfigLoading } = useConfig();
     const router = useRouter();
     const searchParams = useSearchParams();
     const token = searchParams.get('token');
-
-    const [authInfo, setAuthInfo] = useState<AuthInfo | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    useEffect(() => {
-        const fetchAuthSettings = async () => {
-            try {
-                const info = await getAuthInfo();
-                setAuthInfo(info);
-            } catch (error) {
-                console.error('Failed to fetch auth settings:', error);
-                toast.error('Could not load page settings. Please try again later.');
-                setAuthInfo(null);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchAuthSettings();
-    }, []);
-
     const handleErrorToast = (error: unknown, defaultMessage: string) => {
+        let message = defaultMessage;
         if (isAxiosError(error) && error.response?.data) {
-            const serverMessage = error.response.data;
-            if (typeof serverMessage === 'string' && serverMessage.length > 0) {
-                toast.error(serverMessage);
-            } else if (serverMessage.message && typeof serverMessage.message === 'string') {
-                toast.error(serverMessage.message);
-            } else {
-                toast.error(defaultMessage);
-            }
-        } else {
-            toast.error(defaultMessage);
+            const serverMessage = error.response.data.message || error.response.data;
+            if (typeof serverMessage === 'string' && serverMessage.length > 0) message = serverMessage;
         }
+        toast.error(message);
     };
 
     const handleSubmit = async (e: FormEvent) => {
@@ -90,32 +64,28 @@ const ResetPasswordClientComponent = () => {
             toast.error('Passwords do not match.');
             return;
         }
-        if (!token) {
-            toast.error('Missing password reset token.');
+        if (!token || !config?.apiUrl) {
+            toast.error('Invalid request. Please try again.');
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const response = await axios.post(`${api_url}/auth/reset-password`, {
-                token,
-                password,
-            });
+            const response = await axios.post(`${config.apiUrl}/auth/reset-password`, { token, password });
             toast.success(response.data.message || 'Your password has been reset successfully.');
             router.push('/login?reset_success=true');
         } catch (err) {
             handleErrorToast(err, 'Failed to reset password. The link may have expired.');
-            console.error('Password reset failed:', err);
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    if (isLoading) {
-        return null;
+    if (isConfigLoading) {
+        return <Loader2 className='h-12 w-12 animate-spin text-primary' />;
     }
 
-    if (!authInfo || !authInfo.email_auth_enabled) {
+    if (!config || !config.emailAuthEnabled) {
         return (
             <InfoCard
                 title='Feature Disabled'
@@ -177,14 +147,12 @@ const ResetPasswordClientComponent = () => {
     );
 };
 
-const ResetPasswordPage = () => {
-    return (
-        <div className='flex min-h-screen w-full items-center justify-center bg-muted/40'>
-            <Suspense fallback={<Loader2 className='h-12 w-12 animate-spin text-primary' />}>
-                <ResetPasswordClientComponent />
-            </Suspense>
-        </div>
-    );
-};
+const ResetPasswordPage = () => (
+    <div className='flex min-h-screen w-full items-center justify-center bg-muted/40'>
+        <Suspense fallback={<Loader2 className='h-12 w-12 animate-spin text-primary' />}>
+            <ResetPasswordClientComponent />
+        </Suspense>
+    </div>
+);
 
 export default ResetPasswordPage;

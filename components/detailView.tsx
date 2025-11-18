@@ -21,7 +21,8 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Loader2, Ban, Trash2, Video, ExternalLink, Copy } from 'lucide-react';
 import { useAuth } from '@/contexts/authContext';
-import { getPaymentInfo, ParsedPaymentInfo } from '@/lib/utils';
+import { useConfig } from '@/contexts/configContext';
+import { formatBytes } from '@/lib/utils';
 
 type UserRole = 'user' | 'admin';
 
@@ -41,7 +42,6 @@ interface FullUserDetails {
     currentPeriodEnd: string | null;
     connectedProviders: string[];
 }
-
 interface UserClip {
     id: string;
     file_name: string;
@@ -56,38 +56,29 @@ const DetailItem = ({ label, value }: { label: string; value: React.ReactNode })
     </div>
 );
 
-const formatBytes = (bytes: number, decimals = 2) => {
-    if (!+bytes) return '0 Bytes';
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-};
-
 export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDataChange: () => void }) => {
-    const api_url = process.env.NEXT_PUBLIC_API_URL;
+    const { config } = useConfig();
     const { user: adminUser } = useAuth();
     const [details, setDetails] = useState<FullUserDetails | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [userClips, setUserClips] = useState<UserClip[] | null>(null);
     const [clipsLoading, setClipsLoading] = useState(false);
-    const [paymentInfo, setPaymentInfo] = useState<ParsedPaymentInfo | null>(null);
 
     const fetchDetails = useCallback(async () => {
+        if (!config?.apiUrl) return;
+        setIsLoading(true);
         try {
-            const response = await axios.get<FullUserDetails>(`${api_url}/admin/users/${userId}`, {
+            const response = await axios.get<FullUserDetails>(`${config.apiUrl}/admin/users/${userId}`, {
                 withCredentials: true,
             });
-            const paymentReponse = await getPaymentInfo();
             setDetails(response.data);
-            setPaymentInfo(paymentReponse);
         } catch (error) {
-            toast.error(`Failed to fetch user details, ${error}`);
+            console.error(error);
+            toast.error(`Failed to fetch user details.`);
         } finally {
             setIsLoading(false);
         }
-    }, [userId, api_url]);
+    }, [userId, config?.apiUrl]);
 
     useEffect(() => {
         fetchDetails();
@@ -111,61 +102,70 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
             toast.error('You cannot change your own role.');
             return;
         }
+        if (!config?.apiUrl) return;
         handleAction(
-            () => axios.post(`${api_url}/admin/users/${userId}/role`, { role: role }, { withCredentials: true }),
+            () => axios.post(`${config.apiUrl}/admin/users/${userId}/role`, { role }, { withCredentials: true }),
             'User role updated.',
         );
     };
 
     const handleUpdateTier = (tier: string) => {
+        if (!config?.apiUrl) return;
         handleAction(
-            () => axios.post(`${api_url}/admin/users/${userId}/tier`, { tier }, { withCredentials: true }),
+            () => axios.post(`${config.apiUrl}/admin/users/${userId}/tier`, { tier }, { withCredentials: true }),
             'User tier manually updated.',
         );
     };
 
     const handleUnban = () => {
+        if (!config?.apiUrl) return;
         handleAction(
-            () => axios.post(`${api_url}/admin/users/${userId}/unban`, {}, { withCredentials: true }),
+            () => axios.post(`${config.apiUrl}/admin/users/${userId}/unban`, {}, { withCredentials: true }),
             'User has been unbanned.',
         );
     };
 
     const handleBanUser = () => {
+        if (!config?.apiUrl) return;
         handleAction(
-            () => axios.post(`${api_url}/admin/users/${userId}/ban`, {}, { withCredentials: true }),
+            () => axios.post(`${config.apiUrl}/admin/users/${userId}/ban`, {}, { withCredentials: true }),
             'User has been banned.',
         );
     };
 
     const handleDeleteUser = () => {
+        if (!config?.apiUrl) return;
         handleAction(
-            () => axios.delete(`${api_url}/admin/users/${userId}`, { withCredentials: true }),
+            () => axios.delete(`${config.apiUrl}/admin/users/${userId}`, { withCredentials: true }),
             'User has been permanently deleted.',
         );
     };
 
     const fetchUserClips = async () => {
+        if (!config?.apiUrl) return;
         setClipsLoading(true);
         try {
-            const response = await axios.get<UserClip[]>(`${api_url}/admin/users/${userId}/clips`, {
+            const response = await axios.get<UserClip[]>(`${config.apiUrl}/admin/users/${userId}/clips`, {
                 withCredentials: true,
             });
             setUserClips(response.data);
         } catch (error) {
-            toast.error(`Failed to fetch user clips, ${error}`);
+            console.error(error);
+            toast.error(`Failed to fetch user clips.`);
         } finally {
             setClipsLoading(false);
         }
     };
 
     const handleDeleteClip = async (clipId: string) => {
+        if (!config?.apiUrl) return;
         try {
-            await axios.delete(`${api_url}/admin/clips/${clipId}`, { withCredentials: true });
+            await axios.delete(`${config.apiUrl}/admin/clips/${clipId}`, { withCredentials: true });
             toast.success('Clip deleted successfully.');
             await fetchUserClips();
         } catch (error) {
-            toast.error(`Failed to delete clip, ${error}`);
+            console.error(error);
+            toast.error(`Failed to delete clip.`);
         }
     };
 
@@ -175,7 +175,7 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                 <Loader2 className='animate-spin' />
             </div>
         );
-    if (!details) return <p className='p-6 text-destructive'>Could not load user details.</p>;
+    if (!details || !config) return <p className='p-6 text-destructive'>Could not load user details.</p>;
 
     return (
         <div className='p-4 bg-muted space-y-6'>
@@ -267,7 +267,7 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                             <SelectValue placeholder='Select tier' />
                         </SelectTrigger>
                         <SelectContent>
-                            {paymentInfo?.active_tiers.map((v, i) => (
+                            {config.activeTiers.map((v, i) => (
                                 <SelectItem value={v.name.toLowerCase()} key={i}>
                                     {v.name}
                                 </SelectItem>
@@ -275,12 +275,10 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                         </SelectContent>
                     </Select>
                 </div>
-
                 <Button variant='outline' className='self-end' onClick={fetchUserClips}>
                     <Video className='mr-2 h-4 w-4' />
                     {userClips ? 'Refresh Clips' : 'View User Clips'}
                 </Button>
-
                 {details.isBanned ? (
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -322,7 +320,6 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                         </AlertDialogContent>
                     </AlertDialog>
                 )}
-
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant='destructive' className='self-end' disabled={adminUser?.id === userId}>
@@ -349,7 +346,6 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                     </AlertDialogContent>
                 </AlertDialog>
             </div>
-
             {clipsLoading && (
                 <div className='flex justify-center items-center p-6'>
                     <Loader2 className='animate-spin' />
@@ -375,7 +371,7 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                                     <TableRow key={clip.id}>
                                         <TableCell className='font-medium truncate max-w-xs'>
                                             <a
-                                                href={`${api_url}/clip/${clip.id}`}
+                                                href={`${config.apiUrl}/clip/${clip.id}`}
                                                 target='_blank'
                                                 rel='noopener noreferrer'
                                                 className='hover:underline flex items-center gap-2'
@@ -391,7 +387,7 @@ export const UserDetailView = ({ userId, onDataChange }: { userId: string; onDat
                                                 size='icon'
                                                 variant='outline'
                                                 onClick={() =>
-                                                    navigator.clipboard.writeText(`${api_url}/clip/${clip.id}`)
+                                                    navigator.clipboard.writeText(`${config.apiUrl}/clip/${clip.id}`)
                                                 }
                                             >
                                                 <Copy className='h-4 w-4' />
