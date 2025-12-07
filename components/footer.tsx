@@ -36,7 +36,10 @@ export const Footer = ({ appName = 'Wayclip', appDesc = '', footerLinks = {} }: 
                         </div>
                     ))}
                 </div>
-                <div className='border-t pt-8 text-center'>
+                <div className='border-t pt-8 text-center relative'>
+                    <span className='text-xs font-mono text-muted-foreground absolute left-2 md:flex hidden'>
+                        v{process.env.APP_VERSION}
+                    </span>
                     <p className='text-sm text-muted-foreground'>
                         &copy; {new Date().getFullYear()} {appName}. Open source software licensed under MIT.
                     </p>

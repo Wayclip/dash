@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { version } from './package.json';
 
 const nextConfig: NextConfig = {
     output: 'standalone',
@@ -10,6 +11,9 @@ const nextConfig: NextConfig = {
                 permanent: true,
             },
         ];
+    },
+    env: {
+        APP_VERSION: version,
     },
 };
 
