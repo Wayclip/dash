@@ -74,7 +74,7 @@ const LoginClientComponent = () => {
             return;
         }
         const finalRedirectUri = `${window.location.origin}/dash`;
-        window.location.href = `${config.apiUrl}/auth/${provider}?redirect_uri=${encodeURIComponent(finalRedirectUri)}`;
+        window.location.href = `${config.apiUrl}/auth/${provider}?client=web&redirect_uri=${encodeURIComponent(finalRedirectUri)}`;
     };
 
     const handleErrorToast = (error: unknown, defaultMessage: string) => {
